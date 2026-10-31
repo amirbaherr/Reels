@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<title>Cartoon Reel</title>
+<link rel="stylesheet" href="node_modules/@fontsource/vazirmatn/900.css">
+<link rel="stylesheet" href="node_modules/@fontsource/vazirmatn/800.css">
+<style>
+  html, body { margin: 0; padding: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0a1430; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: 'Vazirmatn', sans-serif; }
+  canvas { position: absolute; inset: 0; display: block; }
+
+  /* subtitles: bottom third */
+  #subs {
+    position: absolute; left: 70px; right: 70px; top: 1330px; height: 330px;
+    display: flex; align-items: center; justify-content: center;
+    direction: rtl; unicode-bidi: isolate; text-align: center;
+    font-weight: 900; font-size: 88px; line-height: 1.38; color: #fff;
+  }
+  #subs .chunk { display: block; }
+  #subs .w {
+    display: inline-block; white-space: nowrap; transform-origin: 50% 70%;
+    text-shadow:
+      0 0 2px #0a0f22, 4px 0 0 #0a0f22, -4px 0 0 #0a0f22, 0 4px 0 #0a0f22, 0 -4px 0 #0a0f22,
+      3px 3px 0 #0a0f22, -3px 3px 0 #0a0f22, 3px -3px 0 #0a0f22, -3px -3px 0 #0a0f22,
+      0 10px 22px rgba(0,0,0,.65);
+  }
+  #subs .w.key { color: #ffd23f; }
+
+  /* step label */
+  #label {
+    position: absolute; top: 210px; left: 50%; transform-origin: 50% 50%;
+    direction: rtl; font-weight: 900; font-size: 74px; line-height: 1;
+    padding: 26px 54px 30px; border-radius: 26px;
+    background: #ffd23f; color: #1a1430;
+    box-shadow: 0 10px 0 #c99a12, 0 22px 40px rgba(0,0,0,.45);
+    white-space: nowrap; opacity: 0;
+  }
+  /* small timer */
+  #timer {
+    position: absolute; top: 220px; left: 50%; transform-origin: 50% 50%;
+    display: flex; align-items: center; gap: 22px;
+    padding: 16px 34px 16px 22px; border-radius: 60px;
+    background: rgba(12,20,48,.82); border: 4px solid #ffd23f; color: #fff;
+    font-weight: 800; font-size: 58px; line-height: 1;
+    direction: ltr; unicode-bidi: isolate; opacity: 0;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45);
+  }
+  #timer svg { width: 70px; height: 70px; display: block; }
+  #timer .digits { font-variant-numeric: tabular-nums; min-width: 160px; text-align: center; padding-top: 6px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "./node_modules/three/build/three.module.js",
+  "three/addons/": "./node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="1080" height="1920"></canvas>
+  <div id="label"></div>
+  <div id="timer">
+    <svg viewBox="0 0 70 70">
+      <circle cx="35" cy="38" r="26" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="7"/>
+      <circle id="ring" cx="35" cy="38" r="26" fill="none" stroke="#ffd23f" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4" transform="rotate(-90 35 38)"/>
+      <rect x="29" y="2" width="12" height="7" rx="2" fill="#ffd23f"/>
+      <line id="hand" x1="35" y1="38" x2="35" y2="20" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <div class="digits" id="digits">۰۰:۰۰</div>
+  </div>
+  <div id="subs"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const W = 1080, H = 1920;
+const [LINES, WORDS, ENV] = await Promise.all(
+  ['build/lines.json', 'build/words.json', 'build/env.json'].map(u => fetch(u).then(r => r.json())));
+
+// ---------- helpers (pure functions of t) ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+const easeOutBack = k => { const c = 1.9; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const fa = s => String(s).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+function envAt(spk, t) {
+  const a = ENV[spk], f = t * ENV.fps, i = Math.floor(f), k = f - i;
+  if (i < 0 || i >= a.length - 1) return 0;
+  return lerp(a[i], a[i + 1], k);
+}
+// how much a speaker is "in a line" (0..1) with soft ramps
+function speaking(spk, t, ramp = 0.12) {
+  let v = 0;
+  for (const L of LINES) if (L.speaker === spk)
+    v = Math.max(v, smooth(L.start - ramp, L.start, t) * (1 - smooth(L.end, L.end + ramp * 2, t)));
+  return v;
+}
+// seeded PRNG (fixed seed -> identical every render)
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rand = mulberry32(20261031);
+
+// ---------- renderer / scene ----------
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+
+const scene = new THREE.Scene();
+const NAVY = 0x0a1430;
+scene.background = new THREE.Color(NAVY);
+scene.fog = new THREE.Fog(NAVY, 11, 30);
+
+const camera = new THREE.PerspectiveCamera(35, W / H, 0.1, 100);
+
+// lights: soft key + cool rim + sky fill
+scene.add(new THREE.HemisphereLight(0x8aa4ff, 0x1a1438, 1.1));
+const key = new THREE.DirectionalLight(0xfff0de, 2.3);
+key.position.set(-3.5, 7, 6);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -4, right: 4, top: 4, bottom: -2, near: 1, far: 20 });
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02; key.shadow.radius = 6;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x5fa8ff, 2.0); rim.position.set(3, 4, -6); scene.add(rim);
+const rim2 = new THREE.DirectionalLight(0xb07cff, 1.2); rim2.position.set(-4, 3, -5); scene.add(rim2);
+const warm = new THREE.PointLight(0xff9a6a, 3.0, 4, 2); warm.position.set(0.8, 1.2, 1.6); scene.add(warm);
+
+// stage floor
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshStandardMaterial({ color: 0x15244f, roughness: 0.82, metalness: 0.05 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+function gridMat(color, opacity) {
+  return new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
+}
+function makeGrid(size, div, color, opacity) {
+  const g = new THREE.GridHelper(size, div, color, color);
+  g.material = gridMat(color, opacity); return g;
+}
+const floorGrid = makeGrid(40, 80, 0x4d7dff, 0.28); floorGrid.position.y = 0.002; scene.add(floorGrid);
+const floorGrid2 = makeGrid(40, 16, 0x7fa6ff, 0.35); floorGrid2.position.y = 0.003; scene.add(floorGrid2);
+
+// back wall with grid (cyclorama-ish)
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(80, 30),
+  new THREE.MeshStandardMaterial({ color: 0x0f1c42, roughness: 0.95 }));
+wall.position.set(0, 15, -7); scene.add(wall);
+const wallGrid = makeGrid(40, 80, 0x3d66e0, 0.22); wallGrid.rotation.x = Math.PI / 2; wallGrid.position.set(0, 0, -6.98); scene.add(wallGrid);
+
+// spotlight pool under the characters
+function radialTex(inner, outer) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d'); const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, inner); g.addColorStop(1, outer); x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const pool = new THREE.Mesh(new THREE.CircleGeometry(3.4, 64),
+  new THREE.MeshBasicMaterial({ map: radialTex('rgba(120,160,255,0.55)', 'rgba(120,160,255,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.005, 0.2); scene.add(pool);
+// wall glow behind the characters
+const glow = new THREE.Mesh(new THREE.PlaneGeometry(14, 14),
+  new THREE.MeshBasicMaterial({ map: radialTex('rgba(90,120,255,0.45)', 'rgba(90,120,255,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+glow.position.set(0, 3.2, -6.9); scene.add(glow);
+
+// speaker ring (glows under whoever talks)
+function ring(color) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.72, 64),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.01; scene.add(m); return m;
+}
+
+// floating decorative cubes (fixed seeded layout)
+const deco = [];
+const decoCols = [0x3b5bdb, 0x5f3dc4, 0xd97757, 0x1c7ed6, 0xffd23f];
+for (let i = 0; i < 12; i++) {
+  const s = 0.18 + rand() * 0.35;
+  const m = new THREE.Mesh(new RoundedBoxGeometry(s, s, s, 2, s * 0.15),
+    new THREE.MeshStandardMaterial({ color: decoCols[i % decoCols.length], roughness: 0.4, emissive: decoCols[i % decoCols.length], emissiveIntensity: 0.25 }));
+  const side = i % 2 ? 1 : -1;
+  m.userData = { x: side * (3.2 + rand() * 4), y: 3.6 + rand() * 4, z: -3.5 - rand() * 3, ph: rand() * 6.28, sp: 0.2 + rand() * 0.35 };
+  scene.add(m); deco.push(m);
+}
+
+// ---------- materials ----------
+const std = (color, rough = 0.55, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
+const M = {
+  skin: std(0xe9b38e, 0.6), hair: std(0x141416, 0.8), beard: std(0x1c1917, 0.85),
+  tee: std(0x1b1c21, 0.75), jeans: std(0x3f63a3, 0.7), jeansDark: std(0x2f4c80, 0.75),
+  shoe: std(0x24252b, 0.5), eye: std(0x101014, 0.3), white: std(0xffffff, 0.3, { emissive: 0xffffff, emissiveIntensity: 0.6 }),
+  mouth: std(0x3a1414, 0.7), tongue: std(0xd0605a, 0.6),
+  claude: std(0xd97757, 0.5), claudeDark: std(0xb35a3d, 0.55), claudeEye: std(0x2a1610, 0.4),
+  blush: new THREE.MeshBasicMaterial({ color: 0xff9f8a, transparent: true, opacity: 0.55, depthWrite: false }),
+};
+function box(w, h, d, mat, r = 0.0) {
+  const g = r > 0 ? new RoundedBoxGeometry(w, h, d, 3, r) : new THREE.BoxGeometry(w, h, d);
+  const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function at(mesh, x, y, z) { mesh.position.set(x, y, z); return mesh; }
+
+// ---------- ME: blocky minifig ----------
+const me = new THREE.Group(); scene.add(me);
+const ME_X = -0.64;
+{
+  // legs + shoes
+  for (const s of [-1, 1]) {
+    me.add(at(box(0.36, 0.78, 0.42, M.jeans, 0.03), s * 0.2, 0.47, 0));
+    me.add(at(box(0.38, 0.13, 0.5, M.shoe, 0.04), s * 0.2, 0.065, 0.04));
+  }
+  me.add(at(box(0.82, 0.2, 0.44, M.jeansDark, 0.03), 0, 0.95, 0));       // hips
+  me.add(at(box(0.84, 0.05, 0.45, M.shoe, 0.01), 0, 1.06, 0));          // belt
+}
+// torso (tapered LEGO torso)
+const torsoGeo = new THREE.CylinderGeometry(0.66 / Math.SQRT2, 0.86 / Math.SQRT2, 0.74, 4, 1);
+torsoGeo.rotateY(Math.PI / 4); torsoGeo.scale(1, 1, 0.5);
+const torso = new THREE.Mesh(torsoGeo, M.tee); torso.castShadow = true; torso.receiveShadow = true;
+torso.position.y = 1.08 + 0.37; me.add(torso);
+const neck = at(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.1, 20), M.skin), 0, 1.86, 0); me.add(neck);
+
+// arms (pivot at shoulder)
+const meArms = [];
+for (const s of [-1, 1]) {
+  const arm = new THREE.Group(); arm.position.set(s * 0.4, 1.74, 0);
+  arm.add(at(box(0.22, 0.28, 0.26, M.tee, 0.05), s * 0.04, -0.1, 0));   // sleeve
+  arm.add(at(box(0.18, 0.36, 0.2, M.skin, 0.05), s * 0.05, -0.4, 0.0));  // forearm
+  arm.add(at(box(0.21, 0.15, 0.23, M.skin, 0.06), s * 0.05, -0.63, 0.02)); // hand
+  me.add(arm); meArms.push(arm);
+}
+// head
+const meHead = new THREE.Group(); meHead.position.y = 1.9; me.add(meHead);
+const HZ = 0.29; // face front plane
+meHead.add(at(box(0.62, 0.6, 0.58, M.skin, 0.07), 0, 0.3, 0));
+// hair: short top + back + sideburn stubs + fringe
+meHead.add(at(box(0.66, 0.13, 0.62, M.hair, 0.05), 0, 0.62, -0.005));
+meHead.add(at(box(0.66, 0.36, 0.14, M.hair, 0.04), 0, 0.47, -0.25));
+meHead.add(at(box(0.07, 0.22, 0.42, M.hair, 0.02), -0.315, 0.48, -0.06));
+meHead.add(at(box(0.07, 0.22, 0.42, M.hair, 0.02), 0.315, 0.48, -0.06));
+meHead.add(at(box(0.56, 0.06, 0.06, M.hair, 0.02), 0.02, 0.56, HZ - 0.01));
+// beard: cheeks + chin + mustache (mouth stays visible in the middle)
+meHead.add(at(box(0.1, 0.3, 0.46, M.beard, 0.03), -0.285, 0.14, 0.06));
+meHead.add(at(box(0.1, 0.3, 0.46, M.beard, 0.03), 0.285, 0.14, 0.06));
+meHead.add(at(box(0.64, 0.12, 0.5, M.beard, 0.04), 0, 0.03, 0.06));
+meHead.add(at(box(0.2, 0.05, 0.08, M.beard, 0.02), -0.14, 0.11, HZ + 0.005));
+meHead.add(at(box(0.2, 0.05, 0.08, M.beard, 0.02), 0.14, 0.11, HZ + 0.005));
+meHead.add(at(box(0.3, 0.055, 0.07, M.beard, 0.02), 0, 0.255, HZ + 0.01));
+// eyes + brows
+const meEyes = [], meBrows = [];
+for (const s of [-1, 1]) {
+  const e = new THREE.Group(); e.position.set(s * 0.13, 0.38, HZ + 0.002);
+  e.add(at(box(0.075, 0.1, 0.03, M.eye), 0, 0, 0));
+  e.add(at(box(0.025, 0.03, 0.01, M.white), s * -0.012, 0.022, 0.017));
+  meHead.add(e); meEyes.push(e);
+  const b = at(box(0.14, 0.04, 0.04, M.hair, 0.01), s * 0.135, 0.475, HZ + 0.005); meHead.add(b); meBrows.push(b);
+}
+// mouth (pivot at top, opens downward)
+const meMouth = new THREE.Group(); meMouth.position.set(0, 0.228, HZ + 0.001); meHead.add(meMouth);
+const meMouthIn = at(box(0.16, 1, 0.02, M.mouth), 0, -0.5, 0); meMouth.add(meMouthIn);
+const meTongue = at(box(0.1, 0.35, 0.025, M.tongue), 0, -0.82, 0.002); meMouth.add(meTongue);
+
+me.position.set(ME_X, 0, 0);
+me.rotation.y = 0.3;
+const meRing = ring(0x7fb0ff); meRing.position.x = ME_X;
+
+// ---------- CLAUDE: orange cube with 4 legs and ^ ^ eyes ----------
+const cl = new THREE.Group(); scene.add(cl);
+const CL_X = 0.72;
+const clLegs = [];
+for (const [x, z] of [[-0.3, -0.26], [0.3, -0.26], [-0.3, 0.26], [0.3, 0.26]]) {
+  const l = at(box(0.16, 0.26, 0.16, M.claudeDark, 0.04), x, 0.13, z); cl.add(l); clLegs.push(l);
+}
+const clBody = new THREE.Group(); clBody.position.y = 0.24; cl.add(clBody);  // squash pivot at bottom of body
+const BS = 0.92;
+clBody.add(at(box(1.0, BS, 0.9, M.claude, 0.1), 0, BS / 2, 0));
+const CZ = 0.451;
+const clEyes = [];
+for (const s of [-1, 1]) {
+  const e = new THREE.Group(); e.position.set(s * 0.21, BS * 0.62, CZ);
+  const a = at(box(0.15, 0.048, 0.03, M.claudeEye, 0.012), -0.048, 0, 0); a.rotation.z = 0.78;
+  const b = at(box(0.15, 0.048, 0.03, M.claudeEye, 0.012), 0.048, 0, 0); b.rotation.z = -0.78;
+  a.position.y = b.position.y = 0; e.add(a, b);
+  clBody.add(e); clEyes.push(e);
+}
+for (const s of [-1, 1]) {
+  const c = new THREE.Mesh(new THREE.CircleGeometry(0.075, 32), M.blush); c.position.set(s * 0.34, BS * 0.43, CZ + 0.004); clBody.add(c);
+}
+const clMouth = new THREE.Group(); clMouth.position.set(0, BS * 0.4, CZ + 0.002); clBody.add(clMouth);
+const clMouthIn = at(box(1, 1, 0.025, M.mouth, 0.0), 0, -0.5, 0); clMouth.add(clMouthIn);
+const clTongue = at(box(0.6, 0.4, 0.03, M.tongue), 0, -0.78, 0.002); clMouth.add(clTongue);
+
+cl.position.set(CL_X, 0, 0.1);
+cl.rotation.y = -0.38;
+const clRing = ring(0xffa37f); clRing.position.set(CL_X, 0.01, 0.1);
+
+// ---------- shots ----------
+// target = frame centre, h = vertical extent at target distance, yaw/pitch = camera orbit.
+const SHOTS = {
+  two:  { target: [0.04, 1.15, 0], h: 5.5, yaw: 0.0, pitch: 0.1 },
+  me:   { target: [ME_X + 0.05, 1.9, 0], h: 2.15, yaw: 0.22, pitch: 0.05 },
+  cl:   { target: [CL_X - 0.03, 0.6, 0.1], h: 2.65, yaw: -0.2, pitch: 0.13 },
+};
+const PLAN = ['two', 'cl', 'me', 'two', 'me', 'cl', 'two', 'cl', 'two', 'me', 'cl', 'two'];
+// cuts happen a little before each line starts
+const CUTS = LINES.map((L, i) => i === 0 ? -1 : Math.max(LINES[i - 1].end, L.start - 0.2));
+function shotAt(t) {
+  let i = 0; while (i + 1 < CUTS.length && t >= CUTS[i + 1]) i++;
+  const t0 = Math.max(0, CUTS[i]), t1 = i + 1 < CUTS.length ? CUTS[i + 1] : ENV.duration;
+  return { s: SHOTS[PLAN[i]], k: clamp((t - t0) / (t1 - t0)), idx: i };
+}
+function placeCamera(t) {
+  const { s, k, idx } = shotAt(t);
+  const fov = 35, dist = s.h / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)));
+  const push = lerp(1.05, 0.97, smooth(0, 1, k));                 // slow dolly-in inside every shot
+  const drift = (idx % 2 ? 1 : -1) * 0.04 * (k - 0.5);             // slight orbit drift
+  const yaw = s.yaw + drift, d = dist * push;
+  const [tx, ty, tz] = s.target;
+  camera.fov = fov;
+  camera.position.set(tx + Math.sin(yaw) * Math.cos(s.pitch) * d, ty + Math.sin(s.pitch) * d, tz + Math.cos(yaw) * Math.cos(s.pitch) * d);
+  camera.lookAt(tx, ty, tz);
+  camera.updateProjectionMatrix();
+}
+
+// ---------- characters animation ----------
+function blink(t, offs) {             // deterministic blink schedule
+  const period = 3.3, p = ((t + offs) % period + period) % period;
+  const b = p < 0.14 ? Math.sin(p / 0.14 * Math.PI) : 0;
+  const p2 = ((t + offs + 1.1) % 7.9 + 7.9) % 7.9;               // occasional double-blink
+  return Math.max(b, p2 < 0.12 ? Math.sin(p2 / 0.12 * Math.PI) : 0);
+}
+const laugh = LINES[1].laugh;
+function laughAmt(t) { return laugh ? smooth(laugh[0] - 0.1, laugh[0] + 0.05, t) * (1 - smooth(laugh[1] + 0.2, laugh[1] + 0.9, t)) : 0; }
+
+function animate(t) {
+  const eMe = envAt('ME', t), eCl = envAt('CLAUDE', t);
+  const sMe = speaking('ME', t), sCl = speaking('CLAUDE', t);
+  const lg = laughAmt(t);
+
+  // --- ME ---
+  const breathe = Math.sin(t * 2.1) * 0.5 + 0.5;
+  me.position.y = eMe * 0.045 + sMe * Math.abs(Math.sin(t * 7.5)) * 0.018;
+  torso.scale.set(1 + breathe * 0.012, 1 + breathe * 0.008, 1 + breathe * 0.012);
+  meHead.rotation.x = -eMe * 0.07 + Math.sin(t * 1.3) * 0.02 + sMe * Math.sin(t * 5.2) * 0.03;
+  // looks toward Claude when listening, a bit toward camera when talking
+  meHead.rotation.y = lerp(0.18, -0.12, sMe) + Math.sin(t * 0.7) * 0.04 + lg * 0.1;
+  meHead.rotation.z = Math.sin(t * 0.9) * 0.025 + sCl * 0.04;
+  me.rotation.y = 0.3 - sMe * 0.12;
+  // gestures: arms lift and wave while talking
+  const g = sMe * (0.55 + 0.45 * Math.sin(t * 3.4));
+  meArms[0].rotation.set(-0.1 - g * 0.25 - eMe * 0.25, 0, -0.08 - g * 0.12);
+  meArms[1].rotation.set(-0.15 - g * 0.6 - eMe * 0.35, 0, 0.08 + g * 0.18 + Math.sin(t * 4.1) * 0.06 * sMe);
+  // final line: point-ish wave
+  const cta = smooth(LINES[11].start, LINES[11].start + 0.3, t);
+  meArms[1].rotation.x -= cta * 0.5; meArms[1].rotation.z += cta * Math.sin(t * 9) * 0.12;
+  const mo = clamp(eMe * 1.15);
+  meMouthIn.scale.y = 0.018 + mo * 0.11; meMouthIn.position.y = -meMouthIn.scale.y / 2;
+  meMouthIn.scale.x = 1 - mo * 0.2;
+  meTongue.visible = mo > 0.35; meTongue.scale.y = meMouthIn.scale.y; meTongue.position.y = -meMouthIn.scale.y * 0.82;
+  const bMe = blink(t, 0.4);
+  for (const e of meEyes) e.scale.y = 1 - bMe * 0.9;
+  for (const [i, b] of meBrows.entries()) b.position.y = 0.475 + eMe * 0.025 + (i ? 0.01 : 0) * sMe;
+
+  // --- CLAUDE ---
+  const hopF = lerp(2.4, 4.6, lg);
+  const hopA = sCl * (0.05 + eCl * 0.07) + lg * 0.26;
+  const ph = t * hopF * Math.PI;
+  const hop = Math.abs(Math.sin(ph));
+  const idleBob = (1 - sCl) * Math.sin(t * 2.4) * 0.012;
+  cl.position.y = hop * hopA + idleBob;
+  // squash on landing, stretch in the air
+  const land = Math.pow(1 - hop, 6) * (sCl * 0.6 + lg);
+  const sq = 1 - land * 0.12 + hop * hopA * 0.35;
+  clBody.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+  clBody.rotation.z = Math.sin(ph) * (0.03 * sCl + 0.09 * lg);
+  clBody.rotation.x = -eCl * 0.05 - lg * 0.08;
+  cl.rotation.y = lerp(-0.38, -0.2, sCl) + Math.sin(t * 0.8) * 0.04;
+  for (const [i, l] of clLegs.entries()) l.position.y = 0.13 - (hop * hopA > 0.02 ? Math.sin(ph + i) * 0.015 : 0);
+  const mc = clamp(eCl * 1.1 + lg * 0.6 * (0.6 + 0.4 * Math.sin(t * 28)));
+  clMouthIn.scale.set(0.16 + mc * 0.06, 0.025 + mc * 0.15, 1); clMouthIn.position.y = -clMouthIn.scale.y / 2;
+  clTongue.visible = mc > 0.3;
+  clTongue.scale.set(clMouthIn.scale.x, clMouthIn.scale.y, 1); clTongue.position.y = -clMouthIn.scale.y * 0.78;
+  const squint = lg * 0.35 + blink(t, 1.7) * 0.6;
+  for (const e of clEyes) { e.scale.set(1 + lg * 0.1, 1 - squint, 1); e.position.y = BS * 0.62 + eCl * 0.02 + lg * 0.02; }
+
+  // rings + warm light follow the speaker
+  meRing.material.opacity = sMe * (0.22 + eMe * 0.3);
+  clRing.material.opacity = Math.min(0.6, sCl * (0.22 + eCl * 0.3) + lg * 0.15);
+  const rs = 1 + 0.06 * Math.sin(t * 6);
+  meRing.scale.setScalar(rs); clRing.scale.setScalar(rs * 0.78);
+  warm.intensity = 2.0 + eCl * 2.5;
+
+  for (const d of deco) {
+    const u = d.userData;
+    d.position.set(u.x, u.y + Math.sin(t * u.sp * 2 + u.ph) * 0.18, u.z);
+    d.rotation.set(t * u.sp + u.ph, t * u.sp * 0.7, 0);
+  }
+}
+
+// ---------- overlays: label, timer, subtitles ----------
+const $label = document.getElementById('label'), $timer = document.getElementById('timer');
+const $digits = document.getElementById('digits'), $ring = document.getElementById('ring'), $hand = document.getElementById('hand');
+const $subs = document.getElementById('subs');
+const STEP_LINES = { 5: 'قدم ۱', 6: 'قدم ۲', 7: 'قدم ۳', 8: 'قدم ۴' };
+
+function popIn(t, t0, dur = 0.32) { const k = clamp((t - t0) / dur); return k <= 0 ? 0 : easeOutBack(k); }
+
+function overlays(t) {
+  // step label: from the cut before lines 6–9 until the next cut
+  let lab = null, lt0 = 0, lt1 = 0;
+  for (const i of Object.keys(STEP_LINES).map(Number)) {
+    const t0 = Math.max(CUTS[i], LINES[i].start - 0.2), t1 = i + 1 < LINES.length ? CUTS[i + 1] : LINES[i].end + 0.5;
+    if (t >= t0 && t < t1) { lab = STEP_LINES[i]; lt0 = t0; lt1 = t1; }
+  }
+  if (lab) {
+    const s = popIn(t, lt0), out = smooth(lt1 - 0.12, lt1, t);
+    $label.textContent = lab;
+    $label.style.opacity = String(clamp(s * 3) * (1 - out));
+    $label.style.transform = `translateX(-50%) scale(${(0.4 + 0.6 * s) * (1 - out * 0.3)}) rotate(${(1 - clamp(s)) * -8 - 2}deg)`;
+  } else $label.style.opacity = '0';
+
+  // timer on line 11
+  const L = LINES[10], tt0 = L.start - 0.15, tt1 = Math.min(LINES[11].start - 0.1, L.end + 0.75);
+  if (t >= tt0 && t < tt1) {
+    const s = popIn(t, tt0, 0.28), out = smooth(tt1 - 0.15, tt1, t);
+    const k = smooth(L.start, L.end + 0.4, t);
+    const secs = Math.round(k * 4 * 60);              // counts up to "a few minutes" (04:00)
+    $digits.textContent = fa(String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0'));
+    $ring.setAttribute('stroke-dashoffset', String(163.4 * (1 - k)));
+    $hand.setAttribute('transform', `rotate(${k * 360 * 4} 35 38)`);
+    $timer.style.opacity = String(clamp(s * 3) * (1 - out));
+    $timer.style.transform = `translateX(-50%) scale(${(0.5 + 0.5 * s) * (1 - out * 0.3)})`;
+  } else $timer.style.opacity = '0';
+
+  subtitles(t);
+}
+
+// subtitle chunks: ≤ 4 words / ≤ 20 letters per chunk, built once
+const CHUNKS = [];
+for (const L of LINES) {
+  const ws = WORDS.filter(w => w.line === L.i - 1);
+  let cur = [];
+  const flush = () => { if (cur.length) CHUNKS.push({ line: L.i - 1, words: cur }); cur = []; };
+  for (const w of ws) {
+    const len = cur.reduce((a, x) => a + x.w.length + 1, 0) + w.w.length;
+    if (cur.length && (cur.length >= 4 || len > 20)) flush();
+    cur.push(w);
+    if (/[.!؟?:]$/.test(w.w) && cur.length >= 2) flush();
+  }
+  flush();
+}
+CHUNKS.forEach(c => { c.start = c.words[0].start - 0.05; });
+CHUNKS.forEach((c, i) => {
+  const L = LINES[c.line], next = CHUNKS[i + 1];
+  c.end = next && next.line === c.line ? next.start
+        : Math.min(L.end + 0.45, next ? LINES[next.line].start - 0.12 : ENV.duration);
+  // DOM built once; per frame we only change opacity/transform
+  const el = document.createElement('div'); el.className = 'chunk'; el.style.display = 'none';
+  c.spans = c.words.map((w, k) => {
+    const sp = document.createElement('span'); sp.className = 'w' + (w.key ? ' key' : ''); sp.textContent = w.w;
+    if (k) el.appendChild(document.createTextNode(' '));
+    el.appendChild(sp); return sp;
+  });
+  c.el = el; $subs.appendChild(el);
+});
+const clean = s => s.replace(/[.!:]$/, '');   // drop trailing full stops/colons on screen (keep ? and ،)
+CHUNKS.forEach(c => c.spans.forEach(sp => sp.textContent = clean(sp.textContent)));
+
+function subtitles(t) {
+  for (const c of CHUNKS) {
+    const on = t >= c.start && t < c.end;
+    c.el.style.display = on ? 'block' : 'none';
+    if (!on) continue;
+    const fadeOut = 1 - smooth(c.end - 0.08, c.end, t);
+    c.words.forEach((w, k) => {
+      const a = clamp((t - (w.start - 0.04)) / 0.12);
+      const s = a <= 0 ? 0.6 : easeOutBack(a);
+      const active = t >= w.start && t < w.end + 0.08 ? 1 : 0;
+      c.spans[k].style.opacity = String(clamp(a * 1.5) * fadeOut);
+      c.spans[k].style.transform = `translateY(${(1 - clamp(a)) * 22}px) scale(${(0.6 + 0.4 * s) * (1 + active * 0.06)})`;
+    });
+  }
+}
+
+// ---------- entry point ----------
+window.renderFrame = (t) => {
+  animate(t);
+  placeCamera(t);
+  overlays(t);
+  renderer.render(scene, camera);
+};
+
+await document.fonts.load("900 88px Vazirmatn", "قدم کارتون سه‌بعدی");
+await document.fonts.load("800 58px Vazirmatn", "۰۱۲");
+await document.fonts.ready;
+renderer.compile(scene, camera);
+window.renderFrame(0);
+window.__ready = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+node_modules/
+build/*.mp4
+build/stills/
+__pycache__/

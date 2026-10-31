@@ -1,0 +1,569 @@
+[
+ {
+  "line": 0,
+  "w": "این",
+  "start": 0.0,
+  "end": 0.3,
+  "key": false
+ },
+ {
+  "line": 0,
+  "w": "ویدیو",
+  "start": 0.3,
+  "end": 0.58,
+  "key": false
+ },
+ {
+  "line": 0,
+  "w": "رو",
+  "start": 0.58,
+  "end": 0.84,
+  "key": false
+ },
+ {
+  "line": 0,
+  "w": "هیچ",
+  "start": 0.84,
+  "end": 1.14,
+  "key": false
+ },
+ {
+  "line": 0,
+  "w": "ابزار",
+  "start": 1.14,
+  "end": 1.76,
+  "key": false
+ },
+ {
+  "line": 0,
+  "w": "ویدیوسازی",
+  "start": 1.76,
+  "end": 2.38,
+  "key": false
+ },
+ {
+  "line": 0,
+  "w": "نساخته.",
+  "start": 2.38,
+  "end": 2.82,
+  "key": false
+ },
+ {
+  "line": 1,
+  "w": "من",
+  "start": 3.794,
+  "end": 3.874,
+  "key": false
+ },
+ {
+  "line": 1,
+  "w": "ساختمش.",
+  "start": 3.914,
+  "end": 4.6,
+  "key": false
+ },
+ {
+  "line": 1,
+  "w": "با",
+  "start": 4.897,
+  "end": 5.0,
+  "key": false
+ },
+ {
+  "line": 1,
+  "w": "کد!",
+  "start": 5.017,
+  "end": 5.38,
+  "key": true
+ },
+ {
+  "line": 2,
+  "w": "نه",
+  "start": 7.282,
+  "end": 7.46,
+  "key": false
+ },
+ {
+  "line": 2,
+  "w": "انیمیشن",
+  "start": 7.46,
+  "end": 8.02,
+  "key": false
+ },
+ {
+  "line": 2,
+  "w": "بلدم،",
+  "start": 8.02,
+  "end": 8.58,
+  "key": false
+ },
+ {
+  "line": 2,
+  "w": "نه",
+  "start": 8.58,
+  "end": 8.8,
+  "key": false
+ },
+ {
+  "line": 2,
+  "w": "سه‌بعدی.",
+  "start": 8.8,
+  "end": 9.26,
+  "key": true
+ },
+ {
+  "line": 3,
+  "w": "لازم",
+  "start": 9.946,
+  "end": 10.2,
+  "key": false
+ },
+ {
+  "line": 3,
+  "w": "نیست.",
+  "start": 10.2,
+  "end": 10.64,
+  "key": false
+ },
+ {
+  "line": 3,
+  "w": "فقط",
+  "start": 10.64,
+  "end": 11.08,
+  "key": false
+ },
+ {
+  "line": 3,
+  "w": "باید",
+  "start": 11.08,
+  "end": 11.26,
+  "key": false
+ },
+ {
+  "line": 3,
+  "w": "حرف",
+  "start": 11.26,
+  "end": 11.56,
+  "key": false
+ },
+ {
+  "line": 3,
+  "w": "بزنی.",
+  "start": 11.56,
+  "end": 11.9,
+  "key": false
+ },
+ {
+  "line": 4,
+  "w": "خب،",
+  "start": 12.778,
+  "end": 13.02,
+  "key": false
+ },
+ {
+  "line": 4,
+  "w": "چطوری؟",
+  "start": 13.02,
+  "end": 13.92,
+  "key": false
+ },
+ {
+  "line": 5,
+  "w": "قدم",
+  "start": 14.648,
+  "end": 14.84,
+  "key": true
+ },
+ {
+  "line": 5,
+  "w": "اول:",
+  "start": 14.84,
+  "end": 15.32,
+  "key": false
+ },
+ {
+  "line": 5,
+  "w": "کلود",
+  "start": 15.32,
+  "end": 15.7,
+  "key": false
+ },
+ {
+  "line": 5,
+  "w": "کد",
+  "start": 15.7,
+  "end": 16.0,
+  "key": true
+ },
+ {
+  "line": 5,
+  "w": "رو",
+  "start": 16.0,
+  "end": 16.14,
+  "key": false
+ },
+ {
+  "line": 5,
+  "w": "باز",
+  "start": 16.14,
+  "end": 16.273,
+  "key": false
+ },
+ {
+  "line": 5,
+  "w": "کن.",
+  "start": 16.34,
+  "end": 16.6,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "قدم",
+  "start": 17.005,
+  "end": 17.24,
+  "key": true
+ },
+ {
+  "line": 6,
+  "w": "دوم:",
+  "start": 17.24,
+  "end": 17.7,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "بگو",
+  "start": 17.7,
+  "end": 18.08,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "ریلت",
+  "start": 18.08,
+  "end": 18.4,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "درباره‌ی",
+  "start": 18.4,
+  "end": 18.8,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "چیه.",
+  "start": 18.8,
+  "end": 19.22,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "من",
+  "start": 19.22,
+  "end": 19.5,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "سناریو",
+  "start": 19.5,
+  "end": 20.02,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "رو",
+  "start": 20.02,
+  "end": 20.14,
+  "key": false
+ },
+ {
+  "line": 6,
+  "w": "می‌نویسم.",
+  "start": 20.14,
+  "end": 20.5,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "قدم",
+  "start": 21.005,
+  "end": 21.14,
+  "key": true
+ },
+ {
+  "line": 7,
+  "w": "سوم:",
+  "start": 21.14,
+  "end": 21.6,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "صداها",
+  "start": 22.023,
+  "end": 22.32,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "رو",
+  "start": 22.32,
+  "end": 22.48,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "بساز",
+  "start": 22.48,
+  "end": 22.78,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "و",
+  "start": 22.78,
+  "end": 22.9,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "بده",
+  "start": 22.9,
+  "end": 23.14,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "به",
+  "start": 23.14,
+  "end": 23.22,
+  "key": false
+ },
+ {
+  "line": 7,
+  "w": "من.",
+  "start": 23.26,
+  "end": 23.34,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "قدم",
+  "start": 24.011,
+  "end": 24.16,
+  "key": true
+ },
+ {
+  "line": 8,
+  "w": "چهارم:",
+  "start": 24.16,
+  "end": 24.6,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "من",
+  "start": 24.6,
+  "end": 25.04,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "دنیای",
+  "start": 25.04,
+  "end": 25.42,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "سه‌بعدی",
+  "start": 25.42,
+  "end": 25.78,
+  "key": true
+ },
+ {
+  "line": 8,
+  "w": "رو",
+  "start": 25.78,
+  "end": 25.9,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "می‌سازم",
+  "start": 25.9,
+  "end": 26.34,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "و",
+  "start": 26.34,
+  "end": 26.46,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "دهن‌ها",
+  "start": 26.46,
+  "end": 26.94,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "رو",
+  "start": 26.94,
+  "end": 27.1,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "با",
+  "start": 27.1,
+  "end": 27.22,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "صدا",
+  "start": 27.22,
+  "end": 27.42,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "هماهنگ",
+  "start": 27.42,
+  "end": 27.92,
+  "key": false
+ },
+ {
+  "line": 8,
+  "w": "می‌کنم.",
+  "start": 27.92,
+  "end": 28.375,
+  "key": false
+ },
+ {
+  "line": 9,
+  "w": "و",
+  "start": 29.064,
+  "end": 29.144,
+  "key": false
+ },
+ {
+  "line": 9,
+  "w": "رندرش",
+  "start": 29.184,
+  "end": 29.62,
+  "key": false
+ },
+ {
+  "line": 9,
+  "w": "چقدر",
+  "start": 29.62,
+  "end": 29.88,
+  "key": false
+ },
+ {
+  "line": 9,
+  "w": "طول",
+  "start": 29.88,
+  "end": 30.04,
+  "key": false
+ },
+ {
+  "line": 9,
+  "w": "می‌کشه؟",
+  "start": 30.04,
+  "end": 30.376,
+  "key": false
+ },
+ {
+  "line": 10,
+  "w": "نهایتاً",
+  "start": 31.039,
+  "end": 31.5,
+  "key": false
+ },
+ {
+  "line": 10,
+  "w": "چند",
+  "start": 31.5,
+  "end": 31.8,
+  "key": false
+ },
+ {
+  "line": 10,
+  "w": "دقیقه.",
+  "start": 31.8,
+  "end": 32.1,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "کامنت",
+  "start": 33.028,
+  "end": 33.24,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "کن",
+  "start": 33.24,
+  "end": 33.46,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "«کارتون»",
+  "start": 33.46,
+  "end": 33.9,
+  "key": true
+ },
+ {
+  "line": 11,
+  "w": "تا",
+  "start": 33.9,
+  "end": 34.16,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "راهنمای",
+  "start": 34.16,
+  "end": 34.58,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "کامل",
+  "start": 34.58,
+  "end": 35.02,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "رو",
+  "start": 35.02,
+  "end": 35.12,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "برات",
+  "start": 35.14,
+  "end": 35.3,
+  "key": false
+ },
+ {
+  "line": 11,
+  "w": "بفرستم.",
+  "start": 35.3,
+  "end": 35.74,
+  "key": false
+ }
+]
