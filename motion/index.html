@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<title>Liquid Glass Motion</title>
+<style>
+@font-face{font-family:Pinar;src:url(../assets/Pinar-FD-Medium.ttf)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#06061a}
+body{font-family:Pinar,sans-serif;color:#fff;direction:rtl;position:relative;-webkit-font-smoothing:antialiased}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden}
+.a{position:absolute;left:0;top:0;visibility:hidden}
+.ltr{direction:ltr}
+svg.a{transform:translate(-50%,-50%)}
+.caret{display:inline-block;width:3px;height:1em;margin:0 6px;vertical-align:-.15em;border-radius:2px;background:#ff8a5a;box-shadow:0 0 8px #ff8a5a}
+.nw{white-space:nowrap}
+
+/* ---------- background ---------- */
+#bg{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 40%,#16123a 0%,#090822 55%,#04040f 100%)}
+.blob{position:absolute;left:0;top:0;border-radius:50%}
+#dots{position:absolute;left:-60px;top:-60px;width:1200px;height:2040px;
+  background-image:radial-gradient(circle,rgba(255,255,255,.16) 2.2px,transparent 2.8px);background-size:48px 48px}
+.orb{position:absolute;left:0;top:0;border-radius:50%;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),0 0 40px rgba(255,255,255,.08)}
+.ring{position:absolute;left:0;top:0;border-radius:50%;border:2px dashed rgba(255,255,255,.12)}
+.streak{position:absolute;left:0;top:0;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)}
+#vig{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(90% 70% at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
+
+/* ---------- liquid glass ---------- */
+.lg{position:absolute;left:0;top:0;visibility:hidden;isolation:isolate;
+  background:linear-gradient(155deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.05) 42%,rgba(255,255,255,.03) 60%,rgba(255,255,255,.10) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.16),
+    inset 3px 4px 2px -3px rgba(255,255,255,.95),
+    inset -3px -4px 2px -3px rgba(255,255,255,.55),
+    inset 0 0 28px rgba(255,255,255,.10),
+    0 30px 70px -18px rgba(0,0,0,.55),
+    0 8px 22px -8px rgba(0,0,0,.35)}
+.lg::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;z-index:3;
+  background:conic-gradient(from var(--la,30deg),rgba(255,255,255,.95),rgba(255,255,255,.08) 22%,rgba(255,255,255,.55) 50%,rgba(255,255,255,.06) 74%,rgba(255,255,255,.95));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.75}
+.lg::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;
+  background:radial-gradient(120% 60% at 30% -10%,rgba(255,255,255,.30),transparent 55%)}
+.lg>*{z-index:4}
+.tint-red{background:linear-gradient(155deg,rgba(255,90,90,.38),rgba(255,60,80,.12) 50%,rgba(255,120,120,.22))}
+.tint-or{background:linear-gradient(155deg,rgba(255,140,90,.32),rgba(255,110,60,.10) 50%,rgba(255,170,120,.20))}
+
+/* pseudo glass for nested elements */
+.pg{position:absolute;background:linear-gradient(155deg,rgba(255,255,255,.17),rgba(255,255,255,.05) 50%,rgba(255,255,255,.09));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),inset 2px 3px 1px -2px rgba(255,255,255,.8),inset -2px -3px 1px -2px rgba(255,255,255,.35),0 10px 26px -10px rgba(0,0,0,.45)}
+
+.txt{color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.28)}
+.dim{color:rgba(255,255,255,.62)}
+.acc{background:linear-gradient(90deg,#ffb36b,#ff6aa2 55%,#b88bff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+
+/* island */
+#island{position:absolute;left:0;top:0;height:78px;border-radius:39px;background:#000;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.4)}
+#island .cam{position:absolute;top:27px;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#2a3350,#0a0c14 60%)}
+#island .ic{position:absolute;top:0;height:78px;display:flex;align-items:center;gap:14px;font-size:32px;white-space:nowrap;padding:0 30px}
+
+/* captions */
+#cap{width:1000px;height:176px;border-radius:88px}
+.chunk{position:absolute;left:50%;top:50%;display:flex;gap:16px;white-space:nowrap;direction:rtl;font-size:66px;line-height:1.2}
+.w{display:inline-block;color:rgba(255,255,255,.38);transform-origin:50% 60%}
+
+/* thumbs */
+.thumb{position:absolute;overflow:hidden}
+.thumb .el{position:absolute;left:50%;top:50%}
+
+.card{border-radius:36px;overflow:hidden}
+.card .ttl{position:absolute;left:0;right:0;font-size:36px;text-align:center;white-space:nowrap}
+.num{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:23px;margin-left:12px;font-size:30px;font-weight:normal;background:rgba(255,255,255,.22);vertical-align:middle}
+.badge{position:absolute;font-size:22px;padding:4px 14px;border-radius:20px;direction:ltr;font-weight:bold;
+  background:linear-gradient(90deg,#ffb36b,#ff6aa2);color:#1a0b14;letter-spacing:1px}
+.shine{position:absolute;top:-20%;width:120px;height:140%;transform:rotate(18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)}
+.mono{font-family:"DejaVu Sans Mono",monospace;letter-spacing:-.5px;direction:ltr;text-align:left;font-size:27px;line-height:1.55;color:rgba(255,255,255,.88)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs id="defs">
+  <linearGradient id="gOr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb36b"/><stop offset="1" stop-color="#ff5f8f"/></linearGradient>
+  <linearGradient id="gRed" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a8a"/><stop offset="1" stop-color="#ff2d55"/></linearGradient>
+  <linearGradient id="gYel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset="1" stop-color="#ffb02e"/></linearGradient>
+  <linearGradient id="gGrn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6ffcb"/><stop offset="1" stop-color="#2fd27a"/></linearGradient>
+</defs></svg>
+
+<div id="stage">
+  <div id="bg"></div>
+  <div id="bgl"></div>
+  <div id="dots"></div>
+  <div id="vig"></div>
+
+  <!-- ================= SCENE 1 ================= -->
+  <div class="lg" id="s1icon" style="width:300px;height:300px;border-radius:86px" data-bezel="44" data-amt="34">
+    <svg id="s1spark" class="a" viewBox="-100 -100 200 200" width="180" height="180" style="left:150px;top:150px;visibility:visible"></svg>
+  </div>
+  <div class="a txt ltr nw" id="s1label" style="font-size:64px;letter-spacing:2px">Claude</div>
+  <div class="a" id="s1ringA" style="width:300px;height:300px;border-radius:86px;border:3px solid rgba(255,170,120,.8)"></div>
+  <div class="lg" id="s1t0" style="width:150px;height:150px;border-radius:44px" data-bezel="30" data-amt="22"><div class="a" style="visibility:inherit;left:75px;top:75px;width:62px;height:62px;border-radius:50%;background:url(#);background:linear-gradient(135deg,#ffb36b,#ff5f8f)"></div></div>
+  <div class="lg" id="s1t1" style="width:150px;height:150px;border-radius:44px" data-bezel="30" data-amt="22"><svg class="a" style="visibility:inherit;left:75px;top:75px" width="74" height="74" viewBox="-50 -50 100 100"><path d="M0-40 L38 30 L-38 30Z" fill="url(#gYel)"/></svg></div>
+  <div class="lg" id="s1t2" style="width:150px;height:150px;border-radius:44px" data-bezel="30" data-amt="22"><svg class="a" style="visibility:inherit;left:75px;top:75px" width="70" height="70" viewBox="-50 -50 100 100"><path d="M-22-36 L38 0 L-22 36Z" fill="#fff" stroke="#fff" stroke-width="10" stroke-linejoin="round"/></svg></div>
+  <div class="lg" id="s1t3" style="width:150px;height:150px;border-radius:44px" data-bezel="30" data-amt="22"><svg class="a" style="visibility:inherit;left:75px;top:75px" width="96" height="96" viewBox="-50 -50 100 100"><path id="s1curve" d="M-40 30 C-10 30 -10 -30 40 -30" fill="none" stroke="url(#gGrn)" stroke-width="9" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1"/><circle cx="-40" cy="30" r="8" fill="#fff"/><circle cx="40" cy="-30" r="8" fill="#fff"/></svg></div>
+
+  <div class="lg" id="s1search" style="width:920px;height:150px;border-radius:75px" data-bezel="40" data-amt="30">
+    <svg class="a" style="visibility:inherit;left:830px;top:75px" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 L21 21"/></svg>
+    <div class="a txt nw" id="s1q" style="visibility:inherit;right:150px;left:auto;top:75px;transform:translateY(-50%);font-size:48px"></div>
+    <svg class="a" id="s1spin" style="left:80px;top:75px" width="60" height="60" viewBox="-30 -30 60 60"><circle r="22" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="6"/><path d="M0-22 A22 22 0 0 1 22 0" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>
+  </div>
+  <div class="lg" id="s1sk0" style="width:920px;height:130px;border-radius:42px" data-bezel="32" data-amt="24"></div>
+  <div class="lg" id="s1sk1" style="width:920px;height:130px;border-radius:42px" data-bezel="32" data-amt="24"></div>
+  <div class="lg" id="s1sk2" style="width:920px;height:130px;border-radius:42px" data-bezel="32" data-amt="24"></div>
+  <div class="lg" id="s1clock" style="width:230px;height:230px;border-radius:115px" data-bezel="40" data-amt="30">
+    <svg class="a" style="visibility:inherit;left:115px;top:115px" width="170" height="170" viewBox="-50 -50 100 100">
+      <g id="s1ticks" stroke="rgba(255,255,255,.7)" stroke-width="3" stroke-linecap="round"></g>
+      <line id="s1hh" x1="0" y1="0" x2="0" y2="-22" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+      <line id="s1mh" x1="0" y1="0" x2="0" y2="-34" stroke="url(#gOr)" stroke-width="4.5" stroke-linecap="round"/>
+      <circle r="5" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="lg tint-red" id="s1x" style="width:300px;height:300px;border-radius:150px" data-bezel="50" data-amt="36">
+    <svg class="a" style="visibility:inherit;left:150px;top:150px" width="150" height="150" viewBox="-50 -50 100 100"><path id="s1xp" d="M-28-28 L28 28 M28-28 L-28 28" stroke="#fff" stroke-width="14" stroke-linecap="round" pathLength="2" stroke-dasharray="2 2"/></svg>
+  </div>
+
+  <!-- ================= SCENE 2/3 : site window ================= -->
+  <div class="lg" id="win" style="width:900px;height:1010px;border-radius:66px" data-bezel="46" data-amt="34">
+    <div class="pg" style="left:40px;top:36px;width:820px;height:84px;border-radius:42px"></div>
+    <svg class="a" style="visibility:inherit;left:790px;top:78px" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    <div class="a txt ltr nw" style="visibility:inherit;left:450px;top:78px;transform:translate(-50%,-50%);font-size:34px;letter-spacing:1px">Motion&nbsp;Prompts</div>
+    <div class="a" style="visibility:inherit;left:96px;top:78px;transform:translate(-50%,-50%);display:flex;gap:9px"><i style="width:12px;height:12px;border-radius:6px;background:#fff;opacity:.8"></i><i style="width:12px;height:12px;border-radius:6px;background:#fff;opacity:.5"></i><i style="width:12px;height:12px;border-radius:6px;background:#fff;opacity:.3"></i></div>
+    <div class="a txt nw" id="winTitle" style="font-size:50px">پرامپت‌های آماده <span class="acc">موشن‌گرافیک</span></div>
+    <div class="pg a" id="winSearch" style="width:820px;height:92px;border-radius:46px">
+      <svg style="position:absolute;right:28px;top:22px" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 L21 21"/></svg>
+      <div id="winQ" class="txt nw" style="position:absolute;right:96px;top:50%;transform:translateY(-50%);font-size:42px"></div>
+      <svg id="winOk" style="position:absolute;left:24px;top:16px;opacity:0" width="60" height="60" viewBox="-30 -30 60 60"><circle r="26" fill="url(#gGrn)"/><path d="M-11 0 L-3 8 L12 -8" fill="none" stroke="#06331a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div id="cards"></div>
+    <div class="a" id="bolt"><svg width="150" height="150" viewBox="-50 -50 100 100"><path d="M8-46 L-30 6 L-4 6 L-10 46 L30-8 L4-8Z" fill="url(#gYel)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
+    <div class="a" id="foundRing" style="width:420px;height:240px;border-radius:44px;border:4px solid #ffcf70"></div>
+  </div>
+
+  <!-- ================= SCENE 4 ================= -->
+  <div class="lg" id="seg" style="width:820px;height:116px;border-radius:58px" data-bezel="34" data-amt="24">
+    <div class="pg a" id="segThumb" style="width:262px;height:88px;border-radius:44px;background:linear-gradient(155deg,rgba(255,255,255,.42),rgba(255,255,255,.16));"></div>
+    <div class="a txt nw" style="visibility:inherit;left:682px;top:58px;transform:translate(-50%,-50%);font-size:40px" id="segL0"><b class="num">۱</b>انتخاب</div>
+    <div class="a txt nw" style="visibility:inherit;left:410px;top:58px;transform:translate(-50%,-50%);font-size:40px" id="segL1"><b class="num">۲</b>کپی</div>
+    <div class="a txt nw" style="visibility:inherit;left:138px;top:58px;transform:translate(-50%,-50%);font-size:40px" id="segL2"><b class="num">۳</b>ارسال</div>
+  </div>
+  <div id="pick"></div>
+
+  <div class="lg" id="detail" style="width:880px;height:720px;border-radius:62px" data-bezel="44" data-amt="32">
+    <div id="detThumbHost"></div>
+    <div class="a txt nw" style="visibility:inherit;right:340px;left:auto;top:70px;font-size:50px">لوگو انیمیشن</div>
+    <div class="a nw dim" style="visibility:inherit;right:340px;left:auto;top:140px;font-size:32px">پرامپت حرفه‌ای · آماده کپی</div>
+    <div class="pg" style="left:40px;top:250px;width:800px;height:270px;border-radius:34px;background:rgba(0,0,0,.18)"></div>
+    <div class="a mono" style="visibility:inherit;left:76px;top:280px;width:740px" id="detCode">
+      <div><span style="color:#ffb36b">Create</span> a 1080×1920 logo reveal</div>
+      <div>in iOS <span style="color:#9fd7ff">liquid glass</span> style, soft</div>
+      <div>refraction, spring motion, 60fps,</div>
+      <div><span style="color:#a6ffcb">export</span> as a single HTML file…</div>
+    </div>
+    <div class="pg a" id="copyBtn" style="visibility:inherit;left:440px;top:620px;width:420px;height:100px;border-radius:50px;transform:translate(-50%,-50%)">
+      <div id="copyA" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:18px;font-size:40px" class="txt">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="3"/><path d="M16 8V6a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h1"/></svg>کپی پرامپت</div>
+      <div id="copyB" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:18px;font-size:40px;opacity:0;border-radius:50px;background:linear-gradient(135deg,rgba(80,230,140,.55),rgba(30,170,100,.35))" class="txt">
+        <svg width="44" height="44" viewBox="-30 -30 60 60"><path d="M-14 0 L-4 10 L16 -10" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>کپی شد!</div>
+    </div>
+  </div>
+
+  <div class="lg" id="chat" style="width:900px;height:920px;border-radius:64px" data-bezel="46" data-amt="32">
+    <svg class="a" id="chatSpark" viewBox="-100 -100 200 200" width="70" height="70" style="visibility:inherit;left:800px;top:70px"></svg>
+    <div class="a txt ltr nw" style="visibility:inherit;left:690px;top:70px;transform:translate(-50%,-50%);font-size:44px">Claude</div>
+    <div style="position:absolute;left:40px;right:40px;top:126px;height:2px;background:rgba(255,255,255,.14)"></div>
+    <div class="pg a" id="uBub" style="width:620px;height:120px;border-radius:40px 40px 12px 40px;background:linear-gradient(135deg,rgba(255,150,100,.55),rgba(255,95,143,.45))">
+      <div class="mono nw" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);font-size:30px;color:#fff">Create a 1080×1920 logo reveal in…</div>
+    </div>
+    <div class="pg a" id="aBub" style="width:700px;height:440px;border-radius:40px 40px 40px 12px">
+      <div id="aHead" class="txt nw" style="position:absolute;right:34px;top:26px;font-size:36px">انیمیشنت آماده‌ست <span class="acc">✦</span></div>
+      <div id="player" style="position:absolute;left:30px;top:88px;width:640px;height:322px;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,#1b1450,#2b0f3a 60%,#0d2a4a)">
+        <div id="plA" style="position:absolute;left:0;top:0;width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#ffb36b,#ff5f8f)"></div>
+        <div id="plB" style="position:absolute;left:0;top:0;width:90px;height:90px;border-radius:24px;background:linear-gradient(135deg,#8fd3ff,#7b5cff)"></div>
+        <div id="plT" class="ltr nw" style="position:absolute;left:0;top:0;font-size:58px;color:#fff;letter-spacing:3px">MOTION</div>
+        <div style="position:absolute;left:24px;right:24px;bottom:20px;height:8px;border-radius:4px;background:rgba(255,255,255,.2)"><div id="plBar" style="height:100%;width:0;border-radius:4px;background:#fff"></div></div>
+        <svg id="plPlay" style="position:absolute;left:280px;top:121px" width="80" height="80" viewBox="-40 -40 80 80"><circle r="38" fill="rgba(255,255,255,.25)" stroke="#fff" stroke-width="2"/><path d="M-10-16 L18 0 L-10 16Z" fill="#fff"/></svg>
+      </div>
+      <svg id="aOk" style="position:absolute;left:-22px;top:-22px;opacity:0" width="80" height="80" viewBox="-40 -40 80 80"><circle r="36" fill="url(#gGrn)" stroke="#fff" stroke-width="3"/><path d="M-15 0 L-4 11 L17 -10" fill="none" stroke="#06331a" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="a" id="think" style="display:flex;gap:16px"><i style="width:22px;height:22px;border-radius:50%;background:#fff"></i><i style="width:22px;height:22px;border-radius:50%;background:#fff"></i><i style="width:22px;height:22px;border-radius:50%;background:#fff"></i></div>
+    <div class="pg" style="left:40px;top:790px;width:820px;height:96px;border-radius:48px"></div>
+    <div class="a mono nw" id="inTxt" style="visibility:inherit;left:150px;top:838px;transform:translateY(-50%);font-size:30px;color:#fff"></div>
+    <div class="a dim nw" id="inPh" style="visibility:inherit;right:70px;left:auto;top:838px;transform:translateY(-50%);font-size:34px">پیام به Claude…</div>
+    <div class="a" id="sendBtn" style="visibility:inherit;left:96px;top:838px;width:72px;height:72px;border-radius:36px;background:linear-gradient(135deg,#ffb36b,#ff5f8f);transform:translate(-50%,-50%)">
+      <svg style="position:absolute;left:14px;top:14px" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </div>
+  </div>
+  <div class="pg a" id="flyChip" style="width:420px;height:84px;border-radius:42px;background:linear-gradient(135deg,rgba(255,150,100,.6),rgba(255,95,143,.5))">
+    <div class="mono nw" style="position:absolute;left:28px;top:50%;transform:translateY(-50%);font-size:28px;color:#fff">📋 Create a 1080×1920…</div>
+  </div>
+
+  <!-- ================= SCENE 5 ================= -->
+  <div class="lg tint-or" id="s5link" style="width:250px;height:250px;border-radius:70px" data-bezel="44" data-amt="32">
+    <svg class="a" style="visibility:inherit;left:125px;top:125px" width="160" height="160" viewBox="-50 -50 100 100" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round">
+      <g id="lnkA"><path d="M-6-18 L6-30 A15 15 0 0 1 28-8 L16 4"/></g>
+      <g id="lnkB"><path d="M6 18 L-6 30 A15 15 0 0 1 -28 8 L-16-4"/></g>
+      <path id="lnkM" d="M-12 12 L12-12"/>
+    </svg>
+  </div>
+  <div class="lg" id="s5url" style="width:820px;height:130px;border-radius:65px" data-bezel="38" data-amt="28">
+    <svg class="a" style="visibility:inherit;left:750px;top:65px" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    <div class="a txt nw" style="visibility:inherit;right:120px;left:auto;top:65px;transform:translateY(-50%);font-size:46px">لینک مستقیم سایت</div>
+    <div class="a" id="urlArrow" style="visibility:inherit;left:80px;top:65px;width:76px;height:76px;border-radius:38px;background:rgba(255,255,255,.9)">
+      <svg style="position:absolute;left:16px;top:16px" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1a1030" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
+    </div>
+  </div>
+  <div class="lg" id="s5word" style="width:860px;height:340px;border-radius:96px" data-bezel="56" data-amt="40">
+    <div class="a nw dim" style="visibility:inherit;left:430px;top:62px;transform:translate(-50%,-50%);font-size:38px">کامنت کن</div>
+    <div class="a nw" id="s5big" style="visibility:inherit;left:430px;top:196px;font-size:178px;line-height:1"></div>
+  </div>
+  <div class="lg" id="s5bar" style="width:940px;height:134px;border-radius:67px" data-bezel="38" data-amt="28">
+    <div class="a" style="visibility:inherit;left:870px;top:67px;width:82px;height:82px;border-radius:41px;transform:translate(-50%,-50%);background:linear-gradient(135deg,#ffb36b,#ff5f8f 50%,#7b5cff)"></div>
+    <div class="a txt nw" id="s5in" style="visibility:inherit;right:130px;left:auto;top:67px;transform:translateY(-50%);font-size:48px"></div>
+    <div class="a dim nw" id="s5ph" style="visibility:inherit;right:130px;left:auto;top:67px;transform:translateY(-50%);font-size:40px">یک کامنت بنویس…</div>
+    <div class="a" id="s5send" style="visibility:inherit;left:80px;top:67px;width:84px;height:84px;border-radius:42px;background:linear-gradient(135deg,#ffb36b,#ff5f8f)">
+      <svg style="position:absolute;left:18px;top:20px" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg>
+    </div>
+  </div>
+  <div class="pg a" id="s5bub" style="height:96px;border-radius:48px;padding:0 36px 0 28px;display:flex;align-items:center;gap:18px;font-size:44px;white-space:nowrap">
+    <i style="width:58px;height:58px;border-radius:29px;background:linear-gradient(135deg,#ffb36b,#ff5f8f 50%,#7b5cff)"></i><span class="txt">موشن</span><span style="color:#ff5f8f">❤</span>
+  </div>
+  <div id="hearts"></div>
+  <div class="a" id="s5arrow"><svg width="90" height="90" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M5 12l7 7 7-7"/></svg></div>
+
+  <div id="burst"></div>
+
+  <!-- ================= GLOBAL UI ================= -->
+  <div class="a" id="island"><div class="cam"></div><div class="ic" id="isC"></div></div>
+  <div class="lg" id="tap" style="width:96px;height:96px;border-radius:48px;background:radial-gradient(circle,rgba(255,255,255,.45),rgba(255,255,255,.15) 70%)" data-bezel="24" data-amt="18"></div>
+  <div class="a" id="tapRing" style="width:96px;height:96px;border-radius:50%;border:4px solid rgba(255,255,255,.9)"></div>
+  <div class="lg" id="cap" data-bezel="44" data-amt="30" data-blur="24" style="background:linear-gradient(155deg,rgba(255,255,255,.16),rgba(20,16,50,.30) 45%,rgba(20,16,50,.22) 70%,rgba(255,255,255,.10))"><div id="capIn"></div></div>
+</div>
+
+<script>
+/* ======================= utilities ======================= */
+const $=id=>document.getElementById(id);
+const C=(x,a=0,b=1)=>x<a?a:x>b?b:x;
+const P=(t,a,b)=>C((t-a)/(b-a));
+const L=(a,b,p)=>a+(b-a)*p;
+const eo=p=>1-Math.pow(1-p,3);
+const eio=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+const ei=p=>p*p*p;
+const eb=p=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(p-1,3)+c1*Math.pow(p-1,2)};
+function SP(t,t0,f=2.2,z=.42){ if(t<=t0)return 0; const d=t-t0,w=2*Math.PI*f,wd=w*Math.sqrt(1-z*z);
+  return 1-Math.exp(-z*w*d)*(Math.cos(wd*d)+z*w/wd*Math.sin(wd*d)); }
+function T(el,o={}){
+  const op=o.o===undefined?1:o.o;
+  if(op<=.003){ if(el._v!==0){el.style.display='none';el._v=0} return }
+  if(el._v!==1){el.style.display='';el.style.visibility='inherit';el._v=1}
+  el.style.opacity=op>=1?'1':op.toFixed(3);
+  const x=o.x||0,y=o.y||0,s=o.s===undefined?1:o.s,sx=o.sx===undefined?s:o.sx,sy=o.sy===undefined?s:o.sy;
+  const persp=(o.rx||o.ry)?`perspective(1600px) rotateX(${o.rx||0}deg) rotateY(${o.ry||0}deg) `:'';
+  el.style.transform=`translate(${x.toFixed(2)}px,${y.toFixed(2)}px) translate(-50%,-50%) ${persp}rotate(${(o.r||0).toFixed(2)}deg) scale(${sx.toFixed(4)},${sy.toFixed(4)})`;
+}
+const hide=el=>T(el,{o:0});
+// life: fade-in spring at a, exit at b (duration d)
+function life(t,a,b,d=.35){ const i=SP(t,a,2.1,.5); const out=b===undefined?0:eio(P(t,b,b+d)); return {i, out, o:C(P(t,a,a+.18))*(1-out)}; }
+function rnd(i){ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+const typed=(s,p)=>{const a=Array.from(s);return a.slice(0,Math.round(a.length*C(p))).join('')};
+
+/* ======================= liquid-glass lens maps ======================= */
+function buildLenses(){
+  const defs=$('defs'); let n=0;
+  document.querySelectorAll('.lg').forEach(el=>{
+    const w=el.offsetWidth,h=el.offsetHeight,r=Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius)||0,w/2,h/2);
+    const bez=+el.dataset.bezel||36, amt=+el.dataset.amt||26, k=.5;
+    const W=Math.ceil(w*k),H=Math.ceil(h*k);
+    const cv=document.createElement('canvas');cv.width=W;cv.height=H;const cx=cv.getContext('2d');const im=cx.createImageData(W,H);
+    const sdf=(x,y)=>{const px=Math.abs(x-w/2)-(w/2-r),py=Math.abs(y-h/2)-(h/2-r);
+      return Math.hypot(Math.max(px,0),Math.max(py,0))+Math.min(Math.max(px,py),0)-r};
+    for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+      const X=(i+.5)/k,Y=(j+.5)/k,d=-sdf(X,Y);let R=128,G=128;
+      if(d<bez){const gx=sdf(X+1,Y)-sdf(X-1,Y),gy=sdf(X,Y+1)-sdf(X,Y-1),l=Math.hypot(gx,gy)||1;
+        const tt=1-C(d/bez),m=Math.pow(tt,2.4);R=128-gx/l*m*127;G=128-gy/l*m*127;}
+      const o=(j*W+i)*4;im.data[o]=R;im.data[o+1]=G;im.data[o+2]=128;im.data[o+3]=255;}
+    cx.putImageData(im,0,0);
+    const id='lens'+(n++);const NS='http://www.w3.org/2000/svg';
+    const f=document.createElementNS(NS,'filter');
+    f.setAttribute('id',id);f.setAttribute('filterUnits','userSpaceOnUse');f.setAttribute('primitiveUnits','userSpaceOnUse');
+    f.setAttribute('x',0);f.setAttribute('y',0);f.setAttribute('width',w);f.setAttribute('height',h);f.setAttribute('color-interpolation-filters','sRGB');
+    const fi=document.createElementNS(NS,'feImage');fi.setAttribute('href',cv.toDataURL());fi.setAttribute('x',0);fi.setAttribute('y',0);
+    fi.setAttribute('width',w);fi.setAttribute('height',h);fi.setAttribute('preserveAspectRatio','none');fi.setAttribute('result','map');
+    const fd=document.createElementNS(NS,'feDisplacementMap');fd.setAttribute('in','SourceGraphic');fd.setAttribute('in2','map');
+    fd.setAttribute('scale',amt*2);fd.setAttribute('xChannelSelector','R');fd.setAttribute('yChannelSelector','G');
+    f.appendChild(fi);f.appendChild(fd);defs.appendChild(f);
+    const blur=el.dataset.blur||(Math.min(w,h)>300?14:9);
+    el.style.backdropFilter=`url(#${id}) blur(${blur}px) saturate(1.75) brightness(1.06)`;
+  });
+}
+
+/* ======================= sparkle (Claude-ish starburst) ======================= */
+function sparkleSVG(svg){
+  let s='';const N=12;
+  for(let i=0;i<N;i++){const a=i/N*Math.PI*2+.13,len=(i%2?62:84)+(i%3)*6,wid=i%2?15:19;
+    s+=`<line x1="0" y1="0" x2="${(Math.cos(a)*len).toFixed(1)}" y2="${(Math.sin(a)*len).toFixed(1)}" stroke="#E07A55" stroke-width="${wid}" stroke-linecap="round"/>`;}
+  svg.innerHTML=s+'<circle r="16" fill="#E07A55"/>';
+}
+
+/* ======================= thumbs ======================= */
+const TT=['لوگو انیمیشن','تایپوگرافی','اینفوگرافیک','ذرات نوری','رابط کاربری','ترنزیشن'];
+const TG=['linear-gradient(135deg,#ff9a5a,#ff4f8b)','linear-gradient(135deg,#7b5cff,#3aa0ff)','linear-gradient(135deg,#19c3c9,#2f7bff)',
+          'linear-gradient(135deg,#2a1a6e,#8a3dff)','linear-gradient(135deg,#ff5f8f,#ffb36b)','linear-gradient(135deg,#2fd27a,#19b5d9)'];
+function thumbHTML(k,w,h){
+  let c='';
+  if(k===0)c=`<div class="el" data-r="ring" style="width:${h*.62}px;height:${h*.62}px;border-radius:50%;border:3px solid #fff"></div><div class="el" data-r="dot" style="width:${h*.36}px;height:${h*.36}px;border-radius:50%;background:#fff"></div>`;
+  if(k===1)c=`<div class="el ltr" data-r="aa" style="font-size:${h*.5}px;line-height:1;color:#fff">Aa</div>`;
+  if(k===2)for(let i=0;i<4;i++)c+=`<div class="el" data-r="bar" style="width:${w*.09}px;height:${h*.6}px;border-radius:8px;background:#fff;transform-origin:50% 100%"></div>`;
+  if(k===3)for(let i=0;i<6;i++)c+=`<div class="el" data-r="pt" style="width:${h*.12}px;height:${h*.12}px;border-radius:50%;background:#fff;box-shadow:0 0 14px #fff"></div>`;
+  if(k===4)c=`<div class="el" data-r="tg" style="width:${h*.75}px;height:${h*.4}px;border-radius:${h*.2}px;background:rgba(255,255,255,.35)"></div><div class="el" data-r="kn" style="width:${h*.32}px;height:${h*.32}px;border-radius:50%;background:#fff"></div>`;
+  if(k===5)for(let i=0;i<3;i++)c+=`<div class="el" data-r="sq" style="width:${h*.3}px;height:${h*.3}px;border-radius:10px;background:#fff;opacity:${1-i*.25}"></div>`;
+  return `<div class="thumb" data-k="${k}" data-w="${w}" data-h="${h}" style="width:${w}px;height:${h}px;background:${TG[k]}">${c}</div>`;
+}
+let thumbs=[];
+function regThumbs(){thumbs=[...document.querySelectorAll('.thumb')].map(el=>({el,k:+el.dataset.k,w:+el.dataset.w,h:+el.dataset.h,ch:[...el.querySelectorAll('.el')]}));}
+function animThumbs(t){
+  for(const th of thumbs){
+    const {k,w,h,ch}=th, tt=t*1.3+k;
+    if(k===0){const p=(tt%1.2)/1.2;ch[0].style.transform=`translate(-50%,-50%) scale(${.6+p*.9})`;ch[0].style.opacity=1-p;
+      ch[1].style.transform=`translate(-50%,-50%) scale(${1+.12*Math.sin(tt*6)})`;}
+    if(k===1){ch[0].style.transform=`translate(-50%,-50%) rotate(${Math.sin(tt*2.2)*10}deg) scale(${1+.15*Math.sin(tt*3)})`;}
+    if(k===2)ch.forEach((b,i)=>{const s=.35+.6*Math.abs(Math.sin(tt*2.4+i*.9));b.style.transform=`translate(${(i-1.5)*w*.15-w*.045}px,${-h*.3}px) scaleY(${s})`;b.style.left='50%';b.style.top='50%'});
+    if(k===3)ch.forEach((d,i)=>{const a=tt*2+i/6*Math.PI*2,R=h*.28;d.style.transform=`translate(-50%,-50%) translate(${Math.cos(a)*R*1.4}px,${Math.sin(a)*R}px)`});
+    if(k===4){const p=(Math.sin(tt*2.5)+1)/2;ch[0].style.transform='translate(-50%,-50%)';ch[0].style.background=`rgba(255,255,255,${.25+.35*p})`;
+      ch[1].style.transform=`translate(-50%,-50%) translate(${(p-.5)*h*.36}px,0)`;}
+    if(k===5)ch.forEach((q,i)=>{const p=((tt*.8+i/3)%1);q.style.transform=`translate(-50%,-50%) translate(${(p-.5)*w*.8}px,0) rotate(${p*180}deg) scale(${Math.sin(p*Math.PI)})`});
+  }
+}
+
+/* ======================= captions ======================= */
+const CAP=[
+ [[.72,'اگه'],[.90,'با'],[1.00,'هوش'],[1.26,'مصنوعی'],[1.62,'کلاد',1]],
+ [[2.02,'موشن‌گرافیک',1],[2.76,'می‌سازی،']],
+ [[3.22,'دیگه'],[3.50,'وقتت'],[3.70,'رو'],[3.96,'برای'],[4.24,'گشتن']],
+ [[4.64,'دنبال'],[5.02,'پرامپت',1],[5.36,'تلف'],[5.82,'نکن!',1]],
+ [[6.54,'توی'],[6.72,'این'],[6.86,'سایت،',1],[7.16,'کلی'],[7.46,'پرامپت',1]],
+ [[7.90,'آماده'],[8.20,'و'],[8.28,'حرفه‌ای',1],[8.68,'موشن‌گرافیک',1]],
+ [[9.60,'یک‌جا',1],[10.08,'جمع'],[10.35,'شده']],
+ [[10.84,'تا'],[11.06,'هر'],[11.28,'طرحی'],[11.52,'که'],[11.68,'نیاز'],[11.95,'داری'],[12.20,'رو']],
+ [[12.36,'در'],[12.60,'لحظه',1],[13.08,'پیدا'],[13.38,'کنی.']],
+ [[14.02,'فقط'],[14.24,'مدل'],[14.56,'دلخواهت'],[15.08,'رو'],[15.20,'انتخاب',1],[15.60,'کن،']],
+ [[16.02,'پرامپتش',1],[16.45,'رو'],[16.66,'کپی',1],[16.94,'کن،']],
+ [[17.18,'و'],[17.32,'مستقیم'],[17.88,'بده'],[18.08,'به'],[18.14,'کلاد',1]],
+ [[18.56,'تا'],[18.72,'انیمیشن',1],[19.28,'آماده'],[19.72,'رو'],[19.86,'تحویلت'],[20.38,'بده!',1]],
+ [[20.84,'برای'],[21.26,'گرفتن'],[21.68,'لینک',1],[22.00,'مستقیم'],[22.68,'این'],[22.76,'سایت،']],
+ [[23.10,'کلمه‌ی'],[23.56,'«موشن»',1],[23.96,'رو'],[24.14,'برام'],[24.42,'کامنت',1],[24.92,'کن!']],
+];
+let capEls=[];
+function buildCaps(){
+  const host=$('capIn');
+  CAP.forEach((ch,ci)=>{
+    const d=document.createElement('div');d.className='chunk';
+    ch.forEach(([s,w,k])=>{const sp=document.createElement('span');sp.className='w';sp.textContent=w;if(k)sp.dataset.k=1;d.appendChild(sp)});
+    host.appendChild(d);
+    const ws=[...d.children];
+    const sc=Math.min(1,900/d.scrollWidth);
+    capEls.push({d,ws,sc,start:ch[0][0],end:ci<CAP.length-1?CAP[ci+1][0][0]:99});
+  });
+}
+function renderCaps(t){
+  const cap=$('cap');
+  const ci=SP(t,.45,1.8,.55), co=0;
+  T(cap,{x:540,y:1500,o:C(P(t,.45,.7)),s:L(.6,1,ci),sx:L(.4,1,ci)});
+  capEls.forEach((c,idx)=>{
+    const a=c.start-.12,b=c.end-.08;
+    const pin=eo(P(t,a,a+.28)), pout=eio(P(t,b,b+.22));
+    const o=pin*(1-pout);
+    if(o<=0){c.d.style.visibility='hidden';return}
+    c.d.style.visibility='visible';c.d.style.opacity=o;
+    c.d.style.transform=`translate(-50%,-50%) translateY(${(1-pin)*46-pout*46}px) scale(${c.sc*(.94+.06*pin)})`;
+    c.d.style.filter=`blur(${((1-pin)+pout)*8}px)`;
+    c.ws.forEach((w,i)=>{
+      const ws=CAP[idx][i][0], we=i<c.ws.length-1?CAP[idx][i+1][0]:c.end;
+      const sp=SP(t,ws-.04,3,.42), act=t>=ws-.04&&t<we+.05;
+      const said=t>=ws-.04;
+      w.style.transform=`translateY(${(1-sp)*16}px) scale(${said?.9+.1*sp+(act?.06*Math.exp(-(t-ws)*5):0):.92})`;
+      if(w.dataset.k&&said){w.style.color='transparent';w.style.backgroundImage='linear-gradient(90deg,#ffc07a,#ff6aa2 60%,#c49bff)';w.style.webkitBackgroundClip='text';w.style.textShadow='none'}
+      else{w.style.backgroundImage='none';w.style.color=said?'#fff':'rgba(255,255,255,.34)';w.style.textShadow=said?'0 2px 16px rgba(0,0,0,.3)':'none'}
+    });
+  });
+}
+
+/* ======================= background ======================= */
+const BL=[['#ff6a3d',1150,.55],['#7b5cff',1250,.65],['#00a6ff',1050,.5],['#ff3f9a',950,.45],['#ffb347',800,.35]];
+let blobs=[],orbs=[],rings=[],streaks=[];
+function buildBG(){
+  const host=$('bgl');
+  BL.forEach(([c,sz,a])=>{const d=document.createElement('div');d.className='blob';d.style.width=d.style.height=sz+'px';
+    d.style.background=`radial-gradient(circle,${c} 0%,${c}88 25%,transparent 66%)`;d.style.opacity=a;host.appendChild(d);blobs.push(d)});
+  for(let i=0;i<2;i++){const d=document.createElement('div');d.className='ring';const s=i?1500:980;d.style.width=d.style.height=s+'px';host.appendChild(d);rings.push(d)}
+  const OC=[['#ffb36b','#ff5f8f'],['#8fd3ff','#7b5cff'],['#a6ffcb','#19b5d9'],['#ffd56b','#ff7a3d'],['#ff8ad8','#8a3dff']];
+  for(let i=0;i<14;i++){const d=document.createElement('div');d.className='orb';const s=40+rnd(i)*120;d.style.width=d.style.height=s+'px';
+    const c=OC[i%5];d.style.background=`radial-gradient(circle at 35% 30%,#fff 0%,${c[0]} 22%,${c[1]} 75%)`;d.style.opacity=.4+.35*rnd(i+9);host.appendChild(d);orbs.push(d)}
+  for(let i=0;i<5;i++){const d=document.createElement('div');d.className='streak';d.style.width=(300+rnd(i+40)*400)+'px';host.appendChild(d);streaks.push(d)}
+}
+function renderBG(t){
+  const P0=[[200,300],[900,700],[300,1300],[850,1550],[540,950]];
+  blobs.forEach((b,i)=>{const s=b.offsetWidth;const x=P0[i][0]+Math.sin(t*.35+i*1.7)*180,y=P0[i][1]+Math.cos(t*.28+i*2.1)*160;
+    b.style.transform=`translate(${x-s/2}px,${y-s/2}px) scale(${1+.12*Math.sin(t*.5+i)})`});
+  rings.forEach((r,i)=>{const s=r.offsetWidth;r.style.transform=`translate(${540-s/2}px,${880-s/2}px) rotate(${t*(i?-6:9)}deg)`});
+  orbs.forEach((o,i)=>{const s=o.offsetWidth;const bx=rnd(i+1)*1080,by=rnd(i+20)*1920;
+    const y=((by-t*(20+rnd(i+3)*40))%2100+2100)%2100-90, x=bx+Math.sin(t*.6+i)*60;
+    o.style.transform=`translate(${x-s/2}px,${y-s/2}px)`});
+  streaks.forEach((s,i)=>{const sp=260+rnd(i+50)*200,len=s.offsetWidth;const x=((rnd(i+60)*2600+t*sp)%2600)-800,y=rnd(i+70)*1920;
+    s.style.transform=`translate(${x}px,${y}px) rotate(-28deg)`;s.style.opacity=.5});
+  $('dots').style.transform=`translate(${(t*14)%48}px,${(-t*22)%48}px)`;
+  document.documentElement.style.setProperty('--la',(30+t*40)+'deg');
+}
+
+/* ======================= island ======================= */
+const ISL=[
+  {a:3.3,b:5.3,w:520,h:`<svg width="40" height="40" viewBox="-30 -30 60 60"><circle r="22" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="6"/><path id="isSpin" d="M0-22 A22 22 0 0 1 22 0" fill="none" stroke="#ffb36b" stroke-width="6" stroke-linecap="round"/></svg><span>در حال جستجو…</span>`},
+  {a:5.36,b:6.4,w:480,h:`<span style="color:#ff6b7f">⏱</span><span>وقتت تلف شد!</span>`},
+  {a:12.5,b:13.8,w:460,h:`<span style="color:#ffd56b">⚡</span><span>پیدا شد در لحظه</span>`},
+  {a:16.72,b:17.7,w:420,h:`<span style="color:#5fe39a">✓</span><span>کپی شد</span>`},
+  {a:20.4,b:21.2,w:470,h:`<span style="color:#5fe39a">✓</span><span>انیمیشن آماده است</span>`},
+  {a:24.95,b:27.6,w:560,h:`<span style="color:#ff6aa2">❤</span><span>کامنت جدید: موشن</span>`},
+];
+let islCur=-1;
+function renderIsland(t){
+  const isl=$('island');let w=250,act=-1,amt=0;
+  ISL.forEach((s,i)=>{ if(t>=s.a-.05&&t<s.b+.4){const pin=SP(t,s.a,2,.55),pout=eio(P(t,s.b,s.b+.35));const k=pin*(1-pout);if(k>amt){amt=k;act=i}}});
+  if(act>=0)w=L(250,ISL[act].w,amt);
+  isl.style.width=w+'px';
+  T(isl,{x:540,y:118,o:1,sy:1+.06*Math.max(0,amt>0&&amt<1?Math.sin(amt*Math.PI):0)});
+  const ic=$('isC');
+  if(act!==islCur){ic.innerHTML=act>=0?ISL[act].h:'';islCur=act}
+  ic.style.opacity=C((amt-.55)/.35);ic.style.right='0px';ic.style.left='auto';
+  ic.style.width=w+'px';ic.style.justifyContent='center';
+  isl.querySelector('.cam').style.left=(w-50)+'px';isl.querySelector('.cam').style.opacity=1-C(amt*2);
+  const sp=$('isSpin');if(sp)sp.setAttribute('transform',`rotate(${t*540})`);
+}
+
+/* ======================= particles ======================= */
+let bursts=[];
+function addBurst(t0,x,y,n,colors,spread=260,size=14){const host=$('burst');const ps=[];
+  for(let i=0;i<n;i++){const d=document.createElement('div');d.className='a';const s=size*(.5+rnd(i*7+t0)*1);
+    d.style.width=d.style.height=s+'px';d.style.borderRadius=i%3?'50%':'4px';d.style.background=colors[i%colors.length];
+    host.appendChild(d);ps.push({d,a:rnd(i*3+t0*10)*Math.PI*2,v:spread*(.5+rnd(i*5+t0)*.8),r:rnd(i+t0)*360})}
+  bursts.push({t0,x,y,ps});}
+function renderBursts(t){bursts.forEach(b=>{const p=P(t,b.t0,b.t0+1.1);b.ps.forEach(q=>{
+  if(p<=0||p>=1){hide(q.d);return}const e=eo(p);
+  T(q.d,{x:b.x+Math.cos(q.a)*q.v*e,y:b.y+Math.sin(q.a)*q.v*e+p*p*120,o:1-ei(p),s:1-p*.5,r:q.r+p*360})})})}
+
+/* ======================= SCENES ======================= */
+function scene1(t){
+  // claude icon
+  const ic=$("s1icon");const iin=SP(t,-.12,1.7,.45),ex=eio(P(t,3.05,3.45));
+  const pulse=SP(t,1.6,3,.25)-(t>1.6?1:0); // overshoot bump at "کلاد"
+  T(ic,{x:540,y:L(640,560,ex)+(1-iin)*120,s:(L(.3,1,iin)+(t>1.6?.12*Math.exp(-(t-1.6)*4)*Math.sin((t-1.6)*18):0))*(1-ex*.6),r:(1-iin)*-25,o:C(P(t,-.12,.1))*(1-ex)});
+  $('s1spark').style.transform=`translate(-50%,-50%) rotate(${t*40+ (t>1.0?eo(P(t,1.0,1.7))*180:0)}deg) scale(${.9+.08*Math.sin(t*4)})`;
+  // label
+  const lb=SP(t,1.62,2.2,.5);
+  T($('s1label'),{x:540,y:L(880,860,lb)-ex*60,o:C(P(t,1.62,1.85))*(1-ex),s:L(.7,1,lb)});
+  // ring pulse
+  const rp=P(t,1.62,2.3);T($('s1ringA'),{x:540,y:640,s:1+eo(rp)*.7,o:rp>0&&rp<1?(1-rp)*.9:0});
+  // motion tiles
+  const TP=[[240,440],[840,440],[240,840],[840,840]];
+  for(let i=0;i<4;i++){const a=2.02+i*.1,sp=SP(t,a,2.3,.42),el=$('s1t'+i);
+    const ox=TP[i][0]-540,oy=TP[i][1]-640,ex2=eio(P(t,3.0+i*.04,3.4+i*.04));
+    const fl=Math.sin(t*2.2+i*1.3)*10;
+    T(el,{x:540+ox*sp+ox*ex2*.8,y:640+oy*sp+fl+oy*ex2*.8,s:L(.2,1,C(sp,0,1.2))*(1-ex2*.5),r:(1-sp)*40*(i%2?1:-1)+Math.sin(t*1.7+i)*5,o:C(P(t,a,a+.12))*(1-ex2)});
+  }
+  const ch=$('s1t0').firstElementChild;ch.style.transform=`translate(-50%,-50%) translateY(${-Math.abs(Math.sin(t*5))*26+13}px) scale(${1+.1*Math.cos(t*10)},${1-.1*Math.cos(t*10)})`;
+  $('s1t1').querySelector('svg').style.transform=`translate(-50%,-50%) rotate(${t*120}deg)`;
+  $('s1t2').querySelector('svg').style.transform=`translate(-50%,-50%) scale(${1+.15*Math.sin(t*6)})`;
+  $('s1t3').querySelector('svg').style.transform='translate(-50%,-50%)';
+  $('s1curve').style.strokeDashoffset=1-((t*.8)%1.2>1?1:(t*.8)%1.2);
+
+  // search bar
+  const sb=$('s1search'),sin=SP(t,3.25,2,.5),shake=t>5.36&&t<5.95?Math.sin((t-5.36)*70)*22*Math.exp(-(t-5.36)*5):0,sx=eio(P(t,6.18,6.5));
+  T(sb,{x:540+shake,y:470+(1-sin)*160-sx*80,s:L(.85,1,sin)*(1-sx*.25),o:C(P(t,3.25,3.45))*(1-sx)});
+  $('s1q').innerHTML=typed('پرامپت موشن‌گرافیک حرفه‌ای',P(t,3.5,4.9))+((t*2.2)%1<.55&&t<5.36?'<i class="caret"></i>':'');
+  const spn=$('s1spin');spn.style.visibility=t>4.2&&t<5.36?'visible':'hidden';spn.style.transform=`translate(-50%,-50%) rotate(${t*600}deg)`;
+  // skeleton
+  for(let i=0;i<3;i++){const el=$('s1sk'+i),a=4.0+i*.13,sp=SP(t,a,2.2,.5);
+    const fall=P(t,5.42+i*.07,6.2+i*.07);const fe=fall*fall;
+    T(el,{x:540+fe*(i-1)*160,y:660+i*160+(1-sp)*90+fe*900,r:fe*(i%2?24:-18),s:L(.9,1,sp),o:C(P(t,a,a+.15))*(1-C(fall*1.6))});
+    if(!el._sk){el._sk=1;el.innerHTML=`<div class="pg" style="right:30px;top:25px;width:80px;height:80px;border-radius:24px;overflow:hidden"></div><div class="pg" style="right:140px;top:34px;width:${460-i*60}px;height:26px;border-radius:13px;overflow:hidden"></div><div class="pg" style="right:140px;top:74px;width:${300+i*40}px;height:22px;border-radius:11px;overflow:hidden"></div><div class="shine" style="left:0;top:-30%;opacity:.35"></div>`}
+    el.querySelector('.shine').style.transform=`translateX(${((t*1.1+i*.2)%1.4)*1200-200}px) rotate(18deg)`;
+  }
+  // clock
+  const cl=$('s1clock'),cin=SP(t,3.5,2,.45),cx=eio(P(t,6.15,6.5));
+  T(cl,{x:540,y:1190+(1-cin)*100,s:L(.4,1,cin)*(1-cx*.4),o:C(P(t,3.5,3.7))*(1-cx),r:shake*.3});
+  const speed=t<5.36?Math.pow(P(t,3.5,5.3),2)*7+.2:.0;const ang=t<3.5?0:(t<5.36?((t-3.5)*(t-3.5))*700:1302);
+  $('s1mh').setAttribute('transform',`rotate(${ang})`);$('s1hh').setAttribute('transform',`rotate(${ang/12})`);
+  $('s1mh').setAttribute('stroke',t>5.36?'#ff4d6a':'url(#gOr)');
+  // big X
+  const xb=$('s1x'),xin=SP(t,5.6,2.4,.38),xx=eio(P(t,6.2,6.5));
+  T(xb,{x:540,y:820,s:L(.2,1,xin)*(1-xx*.4),r:(1-xin)*-60,o:C(P(t,5.6,5.75))*(1-xx)});
+  $('s1xp').style.strokeDashoffset=2-2*eo(P(t,5.7,6.05));
+}
+
+const CARDPOS=[[660,370],[240,370],[660,610],[240,610],[660,850],[240,850]];
+let cardEls=[];
+function buildCards(){
+  const host=$('cards');
+  for(let i=0;i<6;i++){const d=document.createElement('div');d.className='pg a card';d.style.width='400px';d.style.height='220px';
+    d.innerHTML=thumbHTML(i,368,128).replace('style="width','style="left:16px;top:16px;border-radius:24px;width')
+      +`<div class="ttl txt" style="top:150px">${TT[i]}</div><div class="badge" style="left:26px;top:26px">PRO</div><div class="shine" style="left:-160px"></div>`;
+    host.appendChild(d);cardEls.push(d)}
+}
+function scene23(t){
+  const win=$('win'),wi=SP(t,6.45,1.7,.5),wx=eio(P(t,13.62,14.0));
+  T(win,{x:540,y:800+(1-wi)*420+wx*60,s:L(.88,1,C(wi,0,1.2))*(1-wx*.12),rx:(1-C(wi))*28,o:C(P(t,6.45,6.7))*(1-wx)});
+  if(t<6.4||t>14.1)return;
+  // title vs search
+  const ts=eio(P(t,10.7,11.0));
+  T($('winTitle'),{x:450,y:190-ts*30,o:C(P(t,6.8,7.1))*(1-ts)});
+  T($('winSearch'),{x:450,y:190+(1-ts)*30,o:ts,s:L(.95,1,ts)});
+  // cards
+  const fanK=C(Math.floor((t-11.1)/.2),0,6)%6;
+  const found=SP(t,12.36,2.2,.5);
+  cardEls.forEach((c,i)=>{
+    const a=7.16+i*.085,sp=SP(t,a,2.3,.45);
+    let [x,y]=CARDPOS[i];let s=L(.3,1,C(sp,0,1.3)),r=(1-C(sp))*(i%2?12:-12),o=C(P(t,a,a+.12));
+    // gather to stack 9.6–10.1
+    const g=eio(P(t,9.6+i*.05,10.1+i*.05));
+    const sx=450,sy=600-(i)*7,sr=(i-2.5)*3.5;
+    x=L(x,sx,g);y=L(y,sy,g);r=L(r,sr,g);
+    // fan 11.0–12.36
+    const f=eio(P(t,10.95,11.35));
+    if(f>0){const ang=(2.5-i)*12*Math.PI/180,R=420;const fx=450+Math.sin(ang)*R,fy=1020-Math.cos(ang)*R;
+      const lift=t>11.1&&t<12.4&&fanK===i?1:0;const lk=lift;
+      x=L(x,fx,f);y=L(y,fy-lk*50,f);r=L(r,(2.5-i)*12,f);s=L(s,.78+lk*.06,f);}
+    // found
+    if(t>12.36){ if(i===0){x=L(x,450,C(found));y=L(y,620,C(found));r=L(r,0,C(found));s=L(s,1.55,found);}
+      else{o*=1-eo(P(t,12.36,12.7));s*=1-.2*eo(P(t,12.36,12.7));} }
+    T(c,{x,y,s,r,o});
+    c.querySelector('.ttl').style.opacity=i===0&&t>12.36?1:(f>0?(t<12.4&&fanK===i?1:0):(i===0?1:1-g));
+    c.style.zIndex=i===0&&t>12.36?20:(f>0?(fanK===i&&t<12.4?15:10-Math.abs(i-2.5)):6-i);
+    // PRO badge + shine
+    const bd=c.querySelector('.badge'),bp=SP(t,8.28+i*.06,3,.4);bd.style.transform=`scale(${C(bp,0,1.4)})`;bd.style.opacity=C(P(t,8.28+i*.06,8.4+i*.06));
+    c.querySelector('.shine').style.transform=`translateX(${L(-80,620,eio(P(t,8.3+i*.05,8.95+i*.05)))}px) rotate(18deg)`;
+  });
+  // query text
+  let q='';if(t>11.0&&t<12.36)q=TT[fanK];else if(t>=12.36)q=TT[0];else q=typed('لوگو',0);
+  $('winQ').textContent=t>10.9?q:'';
+  $('winOk').style.opacity=C(P(t,12.6,12.8));$('winOk').style.transform=`scale(${C(SP(t,12.6,3,.4),0,1.3)})`;
+  // bolt
+  const bp=SP(t,12.36,3,.35);T($('bolt'),{x:745,y:360,s:L(.2,1,C(bp,0,1.3)),r:(1-bp)*40,o:C(P(t,12.36,12.45))*(1-P(t,13.2,13.5))});
+  const fr=P(t,12.55,13.3);T($('foundRing'),{x:450,y:620,s:1.55*(1+eo(fr)*.25),o:fr>0&&fr<1?(1-fr):0});
+}
+
+const PICK=[[760,640],[320,640],[760,980],[320,980]];
+let pickEls=[];
+function buildPick(){const host=$('pick');
+  for(let i=0;i<4;i++){const d=document.createElement('div');d.className='lg card';d.style.cssText='width:400px;height:300px;border-radius:48px';d.dataset.bezel=36;d.dataset.amt=26;
+    d.innerHTML=thumbHTML(i,360,190).replace('style="width','style="left:20px;top:20px;border-radius:30px;width')+`<div class="ttl txt" style="top:222px;font-size:38px">${TT[i]}</div>`;host.appendChild(d);pickEls.push(d)}
+  $('detThumbHost').innerHTML=thumbHTML(0,270,170).replace('style="width','style="left:570px;top:40px;border-radius:30px;width');
+}
+function tapAt(t,pts){ // pts: [[time,x,y,tap?]...]
+  let x=pts[0][1],y=pts[0][2];
+  for(let i=0;i<pts.length-1;i++){const [a,x0,y0]=pts[i],[b,x1,y1]=pts[i+1];if(t>=a&&t<=b){const p=eio(P(t,a,b));x=L(x0,x1,p);y=L(y0,y1,p)}else if(t>b){x=x1;y=y1}}
+  return [x,y];
+}
+function scene4(t){
+  // segmented control
+  const sg=$('seg'),si=SP(t,13.95,2,.5),sx=eio(P(t,20.62,20.95));
+  T(sg,{x:540,y:300-(1-si)*80-sx*80,s:L(.7,1,si),o:C(P(t,13.95,14.15))*(1-sx)});
+  const stp=t<16.0?0:t<17.3?1:2;const m1=eio(P(t,15.9,16.2)),m2=eio(P(t,17.2,17.5));
+  const tx=L(L(682,410,m1),138,m2);const stretch=1+.25*Math.sin(Math.PI*m1)+.25*Math.sin(Math.PI*m2);
+  T($('segThumb'),{x:tx,y:58,sx:stretch,sy:1-.06*(stretch-1)});
+  for(let i=0;i<3;i++)$('segL'+i).style.opacity=i===stp?1:.55;
+
+  // pick cards
+  const sel=0;
+  pickEls.forEach((c,i)=>{const a=14.05+i*.09,sp=SP(t,a,2.2,.45);const [px,py]=PICK[i];
+    let x=px,y=py+(1-sp)*120,s=L(.5,1,C(sp,0,1.2)),o=C(P(t,a,a+.15));
+    if(i===sel){const pr=t>15.2&&t<15.45?-.06*Math.sin(P(t,15.2,15.45)*Math.PI):0;s+=pr;
+      const mv=eio(P(t,15.55,16.0));x=L(x,540,mv);y=L(y,830,mv);s=L(s,2.1,mv);o*=1-P(t,15.75,16.0);
+    } else {const ex=eio(P(t,15.45+i*.04,15.8+i*.04));y+=ex*140;s*=1-ex*.3;o*=1-ex}
+    T(c,{x,y,s,o});
+  });
+  // detail panel
+  const dt=$('detail'),di=SP(t,15.72,2,.55),dx=eio(P(t,17.15,17.5));
+  T(dt,{x:540,y:L(830,420,dx)+(1-di)*40,s:L(.5,1,C(di,0,1.15))*L(1,.35,dx),o:C(P(t,15.72,15.9))*(1-C(dx*1.4))});
+  const cb=t>16.6&&t<16.85?1-.08*Math.sin(P(t,16.6,16.85)*Math.PI):1;
+  $('copyBtn').style.transform=`translate(-50%,-50%) scale(${cb})`;
+  const cs=eo(P(t,16.7,16.9));$('copyA').style.opacity=1-cs;$('copyB').style.opacity=cs;
+
+  // tap indicator
+  const tp=[[14.3,560,1500],[15.15,760,640],[15.5,760,640],[16.0,700,1080],[16.55,540,1082],[17.0,540,1082],[17.4,800,1350]];
+  const [tx2,ty2]=tapAt(t,tp);const tv=C(P(t,14.3,14.5))*(1-P(t,17.0,17.3));
+  const press=(t>15.18&&t<15.45?Math.sin(P(t,15.18,15.45)*Math.PI):0)+(t>16.62&&t<16.9?Math.sin(P(t,16.62,16.9)*Math.PI):0);
+  // second chat tap
+  const tp2=[[17.7,700,1500],[18.0,636,1260]],tv2=C(P(t,17.7,17.85))*(1-P(t,18.3,18.5));
+  const press2=t>18.05&&t<18.3?Math.sin(P(t,18.05,18.3)*Math.PI):0;
+  if(tv>0)T($('tap'),{x:tx2,y:ty2,s:1-press*.25,o:tv});
+  else if(tv2>0){const [a,b]=tapAt(t,tp2);T($('tap'),{x:a,y:b,s:1-press2*.25,o:tv2})}
+  else if(t<20)hide($('tap'));
+  let rr=null;for(const r0 of[15.25,16.68,18.12]){const p=P(t,r0,r0+.5);if(p>0&&p<1)rr=[r0,p]}
+  if(rr&&t<20){const pos=rr[0]===18.12?[636,1260]:tapAt(rr[0],tp);T($('tapRing'),{x:pos[0],y:pos[1],s:1+eo(rr[1])*1.6,o:1-rr[1]})}else if(t<20)hide($('tapRing'));
+
+  // chat
+  const chEl=$('chat'),ci=SP(t,17.3,1.9,.52),cx=eio(P(t,20.6,20.95));
+  T(chEl,{x:540+(1-ci)*700,y:850+cx*60,s:(1-cx*.15),ry:(1-C(ci))*-30,o:C(P(t,17.3,17.5))*(1-cx)});
+  $('chatSpark').style.transform=`translate(-50%,-50%) rotate(${t*60+(t>18.5&&t<19.1?(t-18.5)*600:0)}deg)`;
+  // flying chip from detail (top) into input
+  const fc=P(t,17.45,17.95),fe=eio(fc);
+  T($('flyChip'),{x:L(540,560,fe),y:L(420,1238,fe)-Math.sin(fc*Math.PI)*120,s:L(.7,1,fe)*(1-.3*P(t,17.85,17.95)),o:fc>0&&t<17.95?1:0,r:Math.sin(fc*Math.PI)*-8});
+  const inTxt='Create a 1080×1920 logo reveal…';
+  $('inTxt').textContent=t>17.93&&t<18.15?inTxt:'';$('inPh').style.opacity=t>17.9&&t<18.15?0:1;
+  $('sendBtn').style.transform=`translate(-50%,-50%) scale(${1-press2*.2})`;
+  const ub=SP(t,18.15,2.2,.5);T($('uBub'),{x:560,y:230+(1-ub)*560,s:L(.6,1,C(ub,0,1.1)),o:C(P(t,18.15,18.3))});
+  const th=P(t,18.45,19.05);T($('think'),{x:150,y:400,o:th>0&&th<1?1:0});
+  $('think').querySelectorAll('i').forEach((d,i)=>d.style.transform=`translateY(${-Math.abs(Math.sin(t*9-i*.7))*16}px)`);
+  const ab=SP(t,18.95,2,.5);T($('aBub'),{x:390,y:555+(1-ab)*80,s:L(.4,1,C(ab,0,1.12)),o:C(P(t,18.95,19.1))});
+  // player
+  const pl=P(t,19.3,20.75);
+  $('plBar').style.width=(pl*100)+'%';$('plPlay').style.opacity=1-C(P(t,19.25,19.45));$('plPlay').style.transform=`scale(${1+P(t,19.25,19.45)*.6})`;
+  const pt=Math.max(0,t-19.3);
+  $('plA').style.transform=`translate(${70+Math.sin(pt*3)*180+180}px,${60+Math.abs(Math.sin(pt*4.5))*-50+60}px) scale(${1+.15*Math.sin(pt*9)})`;
+  $('plB').style.transform=`translate(${440-Math.sin(pt*2.6)*150}px,${130+Math.cos(pt*3)*40}px) rotate(${pt*200}deg)`;
+  $('plT').style.transform=`translate(${190}px,${200-eb(C(pt/.6))*60}px)`;$('plT').style.opacity=C(pt/.4);
+  const ok=SP(t,20.38,3,.4);$('aOk').style.opacity=C(P(t,20.38,20.5));$('aOk').style.transform=`scale(${C(ok,0,1.4)}) rotate(${(1-C(ok))*-90}deg)`;
+}
+
+let heartEls=[];
+function buildHearts(){const host=$('hearts');for(let i=0;i<14;i++){const d=document.createElement('div');d.className='a';
+  d.innerHTML=`<svg width="${40+rnd(i+90)*40}" height="${40+rnd(i+90)*40}" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.1 0 3.6 1.2 5.2 3 1.6-1.8 3.1-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z" fill="${['#ff5f8f','#ffb36b','#ff8ad8','#ff3f6a'][i%4]}"/></svg>`;host.appendChild(d);heartEls.push(d)}}
+function scene5(t){
+  const lk=$('s5link'),li=SP(t,20.85,2,.42),up=eio(P(t,23.0,23.45));
+  T(lk,{x:540,y:L(520,350,up)+(1-li)*120,s:L(.3,1,C(li,0,1.25))*L(1,.72,up),r:(1-li)*-30,o:C(P(t,20.85,21.05))});
+  const join=eb(P(t,21.4,21.75));
+  $('lnkA').setAttribute('transform',`translate(${(1-join)*14},${-(1-join)*14})`);$('lnkB').setAttribute('transform',`translate(${-(1-join)*14},${(1-join)*14})`);
+  $('lnkM').style.opacity=C(P(t,21.6,21.75));
+  const lp=P(t,21.68,22.3);
+  const ur=$('s5url'),ui=SP(t,22.0,2,.5);
+  T(ur,{x:540,y:L(760,560,up)+(1-ui)*80,s:L(.6,1,C(ui,0,1.15))*L(1,.86,up),o:C(P(t,22.0,22.15))});
+  $('urlArrow').style.transform=`translate(-50%,-50%) translate(${Math.sin(t*5)*4}px,${-Math.abs(Math.sin(t*5))*4}px)`;
+  // big word
+  const wd=$('s5word'),wi=SP(t,23.1,1.9,.45);
+  T(wd,{x:540,y:820+(1-wi)*120,s:L(.5,1,C(wi,0,1.2))+(t>25?.015*Math.sin(t*4):0),o:C(P(t,23.1,23.3))});
+  const big=$('s5big');big.textContent=typed('موشن',P(t,23.5,23.95));
+  big.className='a nw acc';
+  big.style.transform=`translate(-50%,-50%) scale(${1+.06*Math.exp(-Math.max(0,t-23.95)*5)})`;
+  big.style.filter=`drop-shadow(0 0 ${18+10*Math.sin(t*4)}px rgba(255,120,150,.55))`;
+  // comment bar
+  const cb=$('s5bar'),bi=SP(t,24.2,2,.5);
+  T(cb,{x:540,y:1200+(1-bi)*140,s:L(.7,1,C(bi,0,1.1)),o:C(P(t,24.2,24.35))});
+  const sent=t>24.95;
+  $('s5in').innerHTML=sent?'':typed('موشن',P(t,24.4,24.8))+((t*2.2)%1<.55&&!sent&&t>24.3?'<i class="caret"></i>':'');
+  $('s5ph').style.opacity=t>24.4?0:1;
+  const sp=t>24.88&&t<25.1?Math.sin(P(t,24.88,25.1)*Math.PI):0;
+  $('s5send').style.transform=`translate(-50%,-50%) scale(${1-sp*.2})`;
+  // bubble flies up
+  const bb=$('s5bub'),bf=SP(t,24.95,1.8,.55),bfo=P(t,24.95,25.1);
+  T(bb,{x:L(560,540,C(bf)),y:L(1200,1064,bf),s:L(.6,1,C(bf,0,1.1)),o:bfo*(1-eio(P(t,26.6,27.0)))});
+  // hearts
+  heartEls.forEach((h,i)=>{const a=24.98+rnd(i+200)*1.6,p=P(t,a,a+1.6);if(p<=0||p>=1){hide(h);return}
+    T(h,{x:800-rnd(i+210)*500+Math.sin(p*6+i)*40,y:1120-p*(500+rnd(i+220)*300),s:L(.4,1.1,eo(C(p*3))),o:(1-ei(p))*C(p*6),r:Math.sin(p*5+i)*20})});
+  // arrow pointing down
+  const ar=C(P(t,25.3,25.6));T($('s5arrow'),{x:540,y:1330+Math.abs(Math.sin(t*4))*24,o:ar*0, s:1});
+}
+
+/* ======================= main ======================= */
+function render(t){
+  renderBG(t);
+  scene1(t);
+  scene23(t);
+  scene4(t);
+  scene5(t);
+  renderBursts(t);
+  animThumbs(t);
+  renderIsland(t);
+  renderCaps(t);
+}
+window.ready=(async()=>{
+  await document.fonts.load('60px Pinar');await document.fonts.ready;
+  sparkleSVG($('s1spark'));sparkleSVG($('chatSpark'));
+  const tk=$('s1ticks');for(let i=0;i<12;i++){const a=i/12*Math.PI*2;tk.innerHTML+=`<line x1="${Math.cos(a)*40}" y1="${Math.sin(a)*40}" x2="${Math.cos(a)*(i%3?44:46)}" y2="${Math.sin(a)*(i%3?44:46)}"/>`}
+  buildBG();buildCards();buildPick();buildHearts();buildCaps();regThumbs();
+  buildLenses();
+  addBurst(1.62,540,640,22,['#ffb36b','#ff8a5a','#fff','#ffd56b'],300,16);
+  addBurst(12.4,540,880,26,['#ffd56b','#fff','#ffb02e'],340,14);
+  addBurst(16.7,540,1082,20,['#5fe39a','#fff','#a6ffcb'],260,13);
+  addBurst(20.4,420,700,28,['#5fe39a','#ffb36b','#ff6aa2','#fff','#8fd3ff'],360,15);
+  addBurst(21.7,540,520,18,['#ffb36b','#fff','#ff6aa2'],260,13);
+  addBurst(23.95,540,830,30,['#ffb36b','#ff6aa2','#c49bff','#fff'],420,16);
+  window.render=render;render(+(new URLSearchParams(location.search).get('t')||0));
+  return true;
+})();
+</script>
+</body>
+</html>
