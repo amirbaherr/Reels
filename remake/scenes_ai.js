@@ -1,0 +1,441 @@
+/* ===== "How does AI make an image from words?" — scenes ===== */
+const END=72.9;
+const CAPRAW=`0.02|هوش@0.02 مصنوعی@0.90 *چطوری*@1.66
+2.22|می‌تونه@2.22 فقط@2.58 با@2.86 *چند@3.08 تا@3.36 کلمه*@3.50
+3.96|یه@3.96 *تصویر@4.28 واقعی*@4.66 بسازه؟@5.22
+5.80|در@5.80 واقع@6.42 هوش@6.66 مصنوعی@6.90
+7.52|از@7.52 قبل@7.74 با@8.22 *میلیون‌ها@8.46 تصویر*@9.08
+9.50|و@9.50 توضیحات@9.56 *متنی*@10.14
+11.04|مرتبط@11.04 با@11.68 اون‌ها@11.88 *آموزش@12.10 دیده*@12.68
+13.02|به@13.02 همین@13.44 دلیل@13.80 یاد@14.22 گرفته@14.54
+14.98|که@14.98 مثلاً@15.18 یه@15.52 *گربه*،@15.88
+16.42|*ماشین*@16.42 یا@16.86 *منظره*@17.08
+17.60|چی@17.60 *ویژگی‌هایی*@17.96 داره@18.70
+18.94|و@18.94 *اجزای@19.36 مختلفشون*@19.82
+20.80|معمولاً@20.80 چطور@21.28 *کنار@21.72 هم*@22.10 قرار@22.30 می‌گیرن@22.68
+23.16|وقتی@23.16 شما@23.90 یه@24.18 *متن*@24.48 بهش@24.86 می‌دین@25.10
+25.58|ابتدا@25.58 *مفهوم@26.16 کلمات*@26.68 رو@27.28 تحلیل@27.46 می‌کنه@27.96
+28.44|و@28.44 بعد@28.84 با@29.06 استفاده@29.30 از@29.90
+30.12|مدلی@30.12 به@30.58 اسم@30.66 *دیفیوژن*@30.94
+31.68|شروع@31.68 به@32.32 ساختن@32.42 *تصویر*@32.84 می‌کنه@33.40
+33.88|این@33.88 مدل@34.50 معمولاً@34.84 کارش@35.30 رو@35.72
+35.88|از@35.88 یک@36.04 تصویر@36.18 *کاملاً@36.60 تصادفی*@37.04
+37.82|و@37.82 پر@37.96 از@38.42 *نویز*@38.62 شروع@38.96 می‌کنه@39.26
+39.74|و@39.74 طی@40.04 چندین@40.30 *مرحله*@40.78
+41.34|نویزها@41.34 رو@41.86 *کم@41.94 می‌کنه*@42.24
+42.62|تا@42.62 کم‌کم@42.78 *شکل‌ها،@43.32 اجزا،*@44.30
+44.96|*نور،@44.96 رنگ*@45.40 و@45.72 *جزئیات*@45.86
+46.30|تصویر@46.30 به@46.84 وجود@47.00 بیان@47.32
+47.62|در@47.62 واقع@48.22 هوش@48.46 مصنوعی@48.64
+49.26|*عکس@49.26 آماده‌ای*@49.60 رو@50.18
+50.24|از@50.24 اینترنت@50.42 *پیدا@50.82 نمی‌کنه*@51.14
+51.82|بلکه@51.82 با@52.48 استفاده@52.66 از@53.16 *الگوهایی*@53.36
+53.96|که@53.96 در@54.06 زمان@54.30 آموزش@54.62 یاد@55.00 گرفته@55.30
+55.78|یک@55.78 *تصویر@56.28 جدید*@56.68 تولید@57.16 می‌کنه@57.54
+57.98|نکته‌ی@57.98 جالب@58.60 اینجاست@59.02 که@59.30
+59.50|هوش@59.50 مصنوعی@59.70 واقعاً@60.28 *مثل@60.76 انسان*@61.18
+61.54|*نمی‌بینه*@61.54 و@62.12 *تصور@62.20 نمی‌کنه*@62.74
+63.42|بلکه@63.42 *الگوهای@64.16 آماری*@64.72
+65.38|و@65.38 ارتباط@65.48 بین@66.14 کلمات@66.42 و@67.08 تصاویر@67.18
+67.72|رو@67.72 یاد@67.86 گرفته@68.10
+68.60|و@68.60 از@69.02 اون‌ها@69.26 برای@69.50 *تولید@69.84 تصویر*@70.24
+70.82|استفاده@70.82 می‌کنه@71.56
+72.60|END`;
+(function(){
+  const L=CAPRAW.trim().split('\n').map(l=>{const [s,tx]=l.split('|');return {s:+s,tx};});
+  for(let i=0;i<L.length-1;i++){
+    const s=L[i].s,e=L[i+1].s;let inH=false;const words=[];
+    for(let tok of L[i].tx.split(' ')){
+      let [w,tt]=tok.split('@');
+      if(w.startsWith('*')){inH=true;w=w.slice(1);}
+      const h=inH;if(w.includes('*')){w=w.replace('*','');inH=false;}
+      words.push({tx:w,hl:h,ltr:!RTL.test(w),t:+tt-.04});
+    }
+    for(let j=words.length-1;j>0;j--){if(words[j].hl&&words[j-1].hl){words[j-1].tx+=' '+words[j].tx;words.splice(j,1);}}
+    CAPS.push({s,e,words});
+  }
+})();
+CH.length=0;CH.push([0,'۱','عکس از چند کلمه؟'],[5.8,'۲','آموزش'],[23.16,'۳','از متن به تصویر'],[33.88,'۴','دیفیوژن'],[47.62,'۵','الگو، نه کپی'],[END,'','']);
+
+/* ---------- illustrations ---------- */
+function mkC(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+function poly(g,S,pts){g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x*S,y*S):g.moveTo(x*S,y*S));g.closePath();}
+function drawLandscape(g,S,night){
+  const lw=S/100;
+  const sky=g.createLinearGradient(0,0,0,S*.66);
+  if(night){sky.addColorStop(0,'#1E1B2E');sky.addColorStop(1,'#4F42A0');}else{sky.addColorStop(0,'#FF6A45');sky.addColorStop(.55,'#FF9E5E');sky.addColorStop(1,'#FFD27A');}
+  g.fillStyle=sky;g.fillRect(0,0,S,S);
+  if(night){const r=rng(3);g.fillStyle='#FFF1C2';for(let i=0;i<45;i++){g.beginPath();g.arc(r()*S,r()*S*.5,(1+r()*2.2)*S/640,0,7);g.fill();}}
+  const sx=S*.64,sy=S*.40,sr=S*.12;
+  g.fillStyle=night?'#FFF1C2':'#FFF6DC';g.beginPath();g.arc(sx,sy,sr,0,7);g.fill();g.lineWidth=lw;g.strokeStyle=P.ink;g.stroke();
+  if(night){g.fillStyle='#4F42A0';g.beginPath();g.arc(sx+sr*.45,sy-sr*.3,sr*.85,0,7);g.fill();}
+  // clouds
+  g.fillStyle=night?'rgba(255,255,255,.12)':'rgba(255,246,220,.85)';
+  [[.2,.2,.07],[.27,.18,.09],[.34,.21,.06],[.8,.13,.05],[.86,.12,.07]].forEach(([x,y,r])=>{g.beginPath();g.arc(x*S,y*S,r*S,0,7);g.fill();});
+  g.lineJoin='round';
+  g.fillStyle=night?'#5A4FA0':'#A06BE0';
+  poly(g,S,[[0,.6],[.16,.38],[.3,.52],[.5,.30],[.7,.55],[.86,.42],[1,.56],[1,.68],[0,.68]]);g.fill();g.lineWidth=lw;g.strokeStyle=P.ink;g.stroke();
+  g.fillStyle='#FFFBF3';poly(g,S,[[.44,.37],[.5,.30],[.56,.37],[.53,.355],[.5,.38],[.47,.355]]);g.fill();g.stroke();
+  g.fillStyle=night?'#2E2A4F':'#3B2F63';
+  poly(g,S,[[0,.68],[.1,.55],[.25,.68]]);g.fill();g.stroke();
+  poly(g,S,[[.55,.68],[.74,.5],[.95,.68]]);g.fill();g.stroke();
+  const lake=g.createLinearGradient(0,S*.68,0,S);
+  lake.addColorStop(0,night?'#33409A':'#5571FF');lake.addColorStop(1,night?'#1F2766':'#2F42C4');
+  g.fillStyle=lake;g.fillRect(0,S*.68,S,S*.32);
+  g.lineWidth=lw;g.beginPath();g.moveTo(0,S*.68);g.lineTo(S,S*.68);g.stroke();
+  g.fillStyle=night?'rgba(255,241,194,.7)':'rgba(255,246,220,.85)';
+  for(let k=0;k<6;k++){const w=sr*2*(1-k*.14);g.beginPath();g.roundRect(sx-w/2,S*(.71+k*.045),w,S*.014,S*.007);g.fill();}
+  // tree
+  g.fillStyle='#21B48A';g.beginPath();g.moveTo(S*.12,S*.9);g.lineTo(S*.2,S*.66);g.lineTo(S*.28,S*.9);g.closePath();g.fill();g.stroke();
+  g.fillStyle=P.ink;g.fillRect(S*.19,S*.9,S*.02,S*.06);
+}
+const IMG={},NOISE=[];
+function makeArt(){
+  IMG.day=mkC(640,640);drawLandscape(IMG.day.getContext('2d'),640,false);
+  IMG.night=mkC(640,640);drawLandscape(IMG.night.getContext('2d'),640,true);
+  for(let k=0;k<32;k++){
+    const c=mkC(96,96),g=c.getContext('2d'),id=g.createImageData(96,96),r=rng(k*977+5);
+    for(let i=0;i<id.data.length;i+=4){const b=r()*255;id.data[i]=lerp(b,r()*255,.75);id.data[i+1]=lerp(b,r()*255,.75);id.data[i+2]=lerp(b,r()*255,.75);id.data[i+3]=255;}
+    g.putImageData(id,0,0);NOISE.push(c);
+  }
+}
+function catFace(x,y,s,e=0,col='#FF9A3C'){
+  withT(x,y,{s},()=>{
+    X.lineJoin='round';X.lineWidth=7;X.strokeStyle=P.ink;
+    [-1,1].forEach(d=>{
+      withT(d*e*55,-e*55,{},()=>{
+        X.fillStyle=col;X.beginPath();X.moveTo(d*28,-78);X.lineTo(d*82,-138);X.lineTo(d*92,-40);X.closePath();X.fill();X.stroke();
+        X.fillStyle=P.pink;X.beginPath();X.moveTo(d*48,-82);X.lineTo(d*78,-112);X.lineTo(d*82,-62);X.closePath();X.fill();
+      });
+    });
+    X.fillStyle=col;X.beginPath();X.ellipse(0,0,112,100,0,0,7);X.fill();X.stroke();
+    [-1,1].forEach(d=>{
+      withT(d*(40+e*45),-14-e*20,{},()=>{
+        X.fillStyle=P.ink;X.beginPath();X.ellipse(0,0,15,22,0,0,7);X.fill();
+        X.fillStyle=P.white;X.beginPath();X.arc(5,-7,6,0,7);X.fill();
+      });
+      withT(d*e*70,30,{},()=>{
+        X.lineWidth=5;X.lineCap='round';
+        for(let k=-1;k<=1;k++){X.beginPath();X.moveTo(d*48,26+k*12);X.lineTo(d*120,18+k*20);X.stroke();}
+      });
+    });
+    withT(0,e*60,{},()=>{
+      X.fillStyle=P.pink;X.beginPath();X.moveTo(-14,18);X.lineTo(14,18);X.lineTo(0,34);X.closePath();X.fill();X.lineWidth=5;X.stroke();
+      X.beginPath();X.moveTo(0,34);X.quadraticCurveTo(-8,52,-22,46);X.moveTo(0,34);X.quadraticCurveTo(8,52,22,46);X.stroke();
+    });
+  });
+}
+function car(x,y,s,col=P.a){
+  withT(x,y,{s},()=>{
+    X.lineWidth=7;X.strokeStyle=P.ink;X.lineJoin='round';
+    X.fillStyle=col;rr(-78,-92,156,80,30);X.fill();X.stroke();
+    X.fillStyle='#CFE2FF';rr(-62,-78,56,50,12);X.fill();X.stroke();rr(6,-78,56,50,12);X.fill();X.stroke();
+    X.fillStyle=col;rr(-140,-30,280,86,30);X.fill();X.stroke();
+    X.fillStyle=P.n;rr(112,-12,22,20,6);X.fill();X.stroke();
+    [-1,1].forEach(d=>{X.fillStyle=P.ink;X.beginPath();X.arc(d*80,58,34,0,7);X.fill();X.fillStyle=P.paper;X.beginPath();X.arc(d*80,58,13,0,7);X.fill();});
+  });
+}
+function mountainIcon(x,y,s){withT(x,y,{s},()=>{X.lineJoin='round';X.lineWidth=6;X.strokeStyle=P.ink;X.fillStyle='#A06BE0';X.beginPath();X.moveTo(-60,40);X.lineTo(-5,-45);X.lineTo(60,40);X.closePath();X.fill();X.stroke();X.fillStyle=P.white;X.beginPath();X.moveTo(-22,-18);X.lineTo(-5,-45);X.lineTo(12,-18);X.lineTo(-5,-10);X.closePath();X.fill();X.stroke();});}
+function waveIcon(x,y,s){withT(x,y,{s},()=>{X.lineCap='round';X.lineWidth=12;for(let k=0;k<3;k++){X.strokeStyle=k%2?P.ink:P.a;X.beginPath();for(let u=-55;u<=55;u+=5){const yy=-26+k*26+Math.sin(u/12)*8;u===-55?X.moveTo(u,yy):X.lineTo(u,yy);}X.stroke();}});}
+function sunIcon(x,y,s,rot=0){withT(x,y,{s,r:rot},()=>{X.lineCap='round';X.lineWidth=9;X.strokeStyle=P.ink;for(let k=0;k<8;k++){const a=k*Math.PI/4;X.beginPath();X.moveTo(Math.cos(a)*42,Math.sin(a)*42);X.lineTo(Math.cos(a)*58,Math.sin(a)*58);X.stroke();}X.fillStyle=P.n;X.beginPath();X.arc(0,0,32,0,7);X.fill();X.lineWidth=6;X.stroke();});}
+const KIND=['cat','car','land'],KNAME={cat:'گربه',car:'ماشین',land:'منظره'};
+const CATC=['#FF9A3C','#8A7E9E','#FFC23A','#F4ECDD','#3B3554'],CARC=[P.a,P.m,P.mint,P.n,P.pink];
+const BGC=['#FFE3C7','#DDE6FF','#D9F3EA','#FFE0EC','#FFF1C2'];
+function thumb(kind,v,x,y,s,o={}){
+  withT(x,y,{s,a:o.a??1,r:o.r||0},()=>{
+    card(-75,-75,150,150,{fill:P.white,r:22,sh:8,lw:5});
+    X.save();rr(-66,-66,132,132,16);X.clip();
+    if(kind==='land'){X.drawImage(v%2?IMG.night:IMG.day,-66,-66,132,132);}
+    else{X.fillStyle=BGC[v%5];X.fillRect(-66,-66,132,132);
+      if(kind==='cat')catFace(0,12,.42,0,CATC[v%5]);else car(0,8,.38,CARC[v%5]);}
+    X.restore();X.lineWidth=4;X.strokeStyle=P.ink;rr(-66,-66,132,132,16);X.stroke();
+    if(o.cap>0)withT(0,98,{s:o.cap},()=>chip(KNAME[kind],0,0,26,{fill:P.n,sh:4,lw:4}));
+  });
+}
+function modelBox(x,y,s,glow=0){
+  withT(x,y,{s},()=>{
+    if(glow>0){X.save();X.globalAlpha*=glow;X.lineWidth=14;X.strokeStyle=P.mint;rr(-190,-130,380,260,52);X.stroke();X.restore();}
+    card(-165,-105,330,210,{fill:P.ink,r:40,sh:12,shc:P.a});
+    const cols=[[-100,[-50,0,50]],[0,[-66,-22,22,66]],[100,[-50,0,50]]];
+    X.lineWidth=3;X.strokeStyle='rgba(244,236,221,.35)';
+    for(let c=0;c<2;c++)for(const a of cols[c][1])for(const b of cols[c+1][1]){X.beginPath();X.moveTo(cols[c][0],a);X.lineTo(cols[c+1][0],b);X.stroke();}
+    cols.forEach(([cx,ys],ci)=>ys.forEach((yy,k)=>{const on=.5+.5*Math.sin(T*6+ci*1.7+k*2.1);X.fillStyle=on>.6?P.n:P.paper;X.beginPath();X.arc(cx,yy,13,0,7);X.fill();}));
+    withT(0,-105,{},()=>chip('مدل هوش مصنوعی',0,0,30,{fill:P.n,sh:4,lw:4}));
+  });
+}
+function noiseImg(x,y,size,n,seed,img=IMG.day,o={}){
+  withT(x,y,{s:o.s??1,r:o.r||0,a:o.a??1},()=>{
+    card(-size/2-14,-size/2-14,size+28,size+28,{fill:P.white,r:34,sh:14,lw:7});
+    X.save();rr(-size/2,-size/2,size,size,22);X.clip();
+    if(n<1){X.filter=`blur(${(n*size/18).toFixed(1)}px) saturate(${lerp(1,.2,n).toFixed(2)})`;X.drawImage(img,-size/2,-size/2,size,size);X.filter='none';}
+    if(n>0){X.globalAlpha*=n>=1?1:Math.pow(n,.75);X.imageSmoothingEnabled=false;X.drawImage(NOISE[((seed%32)+32)%32],-size/2,-size/2,size,size);X.imageSmoothingEnabled=true;}
+    X.restore();X.lineWidth=6;X.strokeStyle=P.ink;rr(-size/2,-size/2,size,size,22);X.stroke();
+  });
+}
+function promptBox(x,y,w,text,n,t,o={}){
+  card(x-w/2,y-62,w,124,{fill:P.white,r:62,sh:10,lw:6});
+  const sub=text.slice(0,Math.round(text.length*n));
+  txt(sub,x+w/2-50,y-4,44,P.ink,'right','rtl');
+  const tw2=tw(sub,44);
+  if(Math.floor(t*3)%2===0||n<1){X.fillStyle=P.m;rr(x+w/2-58-tw2,y-30,6,56,3);X.fill();}
+  card(x-w/2+18,y-44,88,88,{fill:P.ink,r:44,sh:0,lw:0});
+  spark(x-w/2+62,y,1.05,P.n,t);
+}
+let T=0;
+
+/* ---------- 1: intro ---------- */
+function sIntro(t){
+  const al=vis(t,0,5.95,.2,.35);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  withT(540,470,{s:pop(t,.1,.45)},()=>promptBox(0,0,860,'کوه، دریاچه، غروب',pr(t,2.3,3.7),t));
+  const ar=pop(t,3.85,.35);
+  if(ar>0)withT(540,610,{s:ar},()=>{X.fillStyle=P.ink;X.beginPath();X.moveTo(-34,-20);X.lineTo(34,-20);X.lineTo(0,26);X.closePath();X.fill();});
+  const fp=pop(t,3.95,.45);
+  if(fp>0){
+    const rv=eio(pr(t,4.66,5.3));
+    noiseImg(540,940,420,1-rv,Math.floor(t*14),IMG.day,{s:fp});
+    if(rv<.4)withT(540,940,{s:fp*(1-rv/.4)},()=>qmark(0,0,220,t,0,P.n));
+    if(rv>.8){const r=rng(7);for(let i=0;i<5;i++){const s=pop(t,5.15+i*.05,.35);if(s>0)spark(300+r()*480,700+r()*480,s*1.2,[P.n,P.m,P.mint][i%3],t+i);}}
+  }
+  X.restore();
+}
+
+/* ---------- 2: training ---------- */
+function sTrain(t){
+  const al=vis(t,5.75,13.25,.3,.3);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  const cap=pr(t,10.0,10.4);
+  for(let row=0;row<2;row++){
+    const y=row?650:400,dir=row?-1:1,off=((t-5.8)*130*dir)%175;
+    for(let k=-1;k<8;k++){
+      const x=-60+k*175+off+(row?88:0);const idx=k+row*3+20;
+      const p=pop(t,5.9+((k+1)*.05)+row*.15,.4);if(p<=0)continue;
+      thumb(KIND[((idx%3)+3)%3],Math.abs(idx*7+row),x,y,.92*p,{cap,r:Math.sin(idx)*.04});
+    }
+  }
+  // feeding into model
+  if(t>8.0)for(let k=0;k<26;k++){
+    const t0=8.0+k*.18,u=pr(t,t0,t0+.75);if(u<=0||u>=1)continue;
+    const r=rng(k*31+3),sx=160+r()*760;
+    thumb(KIND[k%3],k,lerp(sx,540,eio(u)),lerp(820,1080,eio(u)),lerp(.6,.12,u),{a:1-pr(u,.8,1)});
+  }
+  const mp=pop(t,6.9,.45);
+  if(mp>0)modelBox(540,1090,mp,Math.max(0,Math.sin(Math.PI*pr(t,12.1,12.9))));
+  const cp=pop(t,8.45,.4);
+  if(cp>0){
+    const v=Math.round(lerp(0,1000000,eo(pr(t,8.45,9.4))));
+    const s=fa(v.toLocaleString('en-US')).replace(/,/g,'٬');
+    withT(540,850,{s:cp,r:-.03},()=>chip('+'+s+' تصویر',0,0,48,{fill:P.m,color:P.white,dir:'rtl'}));
+  }
+  const ap=pop(t,12.15,.4);
+  if(ap>0)withT(800,975,{s:ap,r:.08},()=>chip('آموزش ✓',0,0,36,{fill:P.mint}));
+  X.restore();
+}
+
+/* ---------- 3: features & parts ---------- */
+function sFeatures(t){
+  const al=vis(t,13.0,23.3,.3,.3);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  const foc=eio(pr(t,17.6,18.15));
+  const items=[['cat',810,15.88],['car',540,16.42],['land',270,17.08]];
+  items.forEach(([k,x,tt])=>{
+    const p=pop(t,tt,.42);if(p<=0)return;
+    if(k!=='cat'){
+      const a=1-foc;if(a<=0)return;
+      withT(x,700,{s:p*(1-foc*.4),a},()=>{
+        card(-120,-120,240,240,{fill:P.white,r:30,sh:12});
+        X.save();rr(-104,-104,208,208,20);X.clip();
+        if(k==='car'){X.fillStyle=BGC[1];X.fillRect(-104,-104,208,208);car(0,10,.62,P.a);}else X.drawImage(IMG.day,-104,-104,208,208);
+        X.restore();X.lineWidth=5;X.strokeStyle=P.ink;rr(-104,-104,208,208,20);X.stroke();
+        chip(KNAME[k],0,165,38,{fill:P.n});
+      });
+      return;
+    }
+    const cx=lerp(x,540,foc),cy=lerp(700,760,foc),sc=lerp(1,2.1,foc);
+    const e=eio(pr(t,19.4,20.2))*(1-eio(pr(t,21.75,22.55)));
+    withT(cx,cy,{s:p*sc},()=>{
+      card(-120,-120,240,240,{fill:P.white,r:30,sh:12/sc*1.4,lw:5});
+      X.save();rr(-104,-104,208,208,20);X.clip();X.fillStyle=BGC[0];X.fillRect(-104,-104,208,208);X.restore();
+      X.lineWidth=5/sc*1.4;X.strokeStyle=P.ink;rr(-104,-104,208,208,20);X.stroke();
+      catFace(0,22,.62,e);
+      if(foc<.5)chip(KNAME[k],0,165,38,{fill:P.n});
+    });
+  });
+  // feature callouts
+  const fa1=(1-pr(t,19.3,19.6));
+  [['گوش تیز',300,520,455,640,17.98],['چشم',850,600,600,772,18.25],['سبیل',230,960,395,828,18.5]].forEach(([lab,lx,ly,px,py,tt])=>{
+    const p=pop(t,tt,.38)*fa1;if(p<=0)return;
+    X.save();X.globalAlpha*=Math.min(1,p);X.setLineDash([3,14]);X.lineCap='round';X.lineWidth=8;X.strokeStyle=P.ink;X.beginPath();X.moveTo(lx,ly);X.lineTo(px,py);X.stroke();X.restore();
+    X.fillStyle=P.ink;X.beginPath();X.arc(px,py,9,0,7);X.fill();
+    withT(lx,ly,{s:p},()=>chip(lab,0,0,40,{fill:P.white}));
+  });
+  const pp=pop(t,19.45,.4)*(1-pr(t,21.6,21.85));
+  if(pp>0)withT(540,1220,{s:pp},()=>chip('اجزا',0,0,46,{fill:P.a,color:P.white}));
+  const ck=pop(t,22.6,.4);
+  if(ck>0)check(800,500,52,ck);
+  X.restore();
+}
+
+/* ---------- 4: prompt -> concepts -> diffusion ---------- */
+function sPrompt(t){
+  const al=vis(t,23.1,32.0,.3,.35);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  withT(540,370,{s:pop(t,23.2,.45)},()=>promptBox(0,0,900,'منظره‌ی کوه و دریاچه، هنگام غروب',pr(t,24.3,25.5),t));
+  const toks=[['کوه',800,26.2,mountainIcon,'#E7DBFF'],['دریاچه',540,26.4,waveIcon,'#DDE6FF'],['غروب',280,26.6,sunIcon,'#FFE3C7']];
+  toks.forEach(([w,x,tt,ic,bg],i)=>{
+    const p=pr(t,tt,tt+.45);if(p<=0)return;
+    const y=lerp(380,580,eb(p));
+    withT(x,y,{s:Math.min(1,p*2)},()=>chip(w,0,0,48,{fill:P.n}));
+    const ip=pop(t,27.0+i*.2,.4);
+    if(ip>0)withT(x,760,{s:ip},()=>{card(-80,-80,160,160,{fill:bg,r:34,sh:10});ic(0,0,1,t);});
+    const lp=pr(t,28.5+i*.12,29.4+i*.12);
+    if(lp>0){X.save();X.setLineDash([4,18]);X.lineCap='round';X.lineWidth=10;X.strokeStyle=P.ink;X.beginPath();X.moveTo(x,860);X.lineTo(lerp(x,lerp(x,540,.6),lp),lerp(860,960,lp));X.stroke();X.restore();}
+  });
+  const an=pop(t,27.5,.35)*(1-pr(t,28.6,28.9));
+  if(an>0)withT(540,470,{s:an},()=>chip('تحلیل مفهوم…',0,0,36,{fill:P.white}));
+  const dp=pop(t,30.94,.5);
+  if(dp>0)withT(540,1100,{s:dp,r:-.04},()=>{
+    card(-330,-110,660,220,{fill:P.a,r:44,sh:16,lw:7});
+    X.font=`120px ${F}`;X.textAlign='center';X.direction='ltr';X.fillStyle=P.white;X.fillText('Diffusion',0,30);
+    withT(210,-110,{r:.06},()=>chip('دیفیوژن',0,0,40,{fill:P.n}));
+  });
+  X.restore();
+}
+
+/* ---------- 5: denoising ---------- */
+function sDiffuse(t){
+  const al=vis(t,31.75,47.95,.3,.35);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  const u=pr(t,40.3,47.2);const step=Math.max(1,Math.ceil(u*50));
+  const n=t<40.3?1:Math.pow(1-step/50,1.25);
+  const seed=t<40.3?Math.floor(t*12):step;
+  const fp=pop(t,31.8,.5);
+  noiseImg(540,800,680,n,seed,IMG.day,{s:fp});
+  if(t>46.9){const r=rng(9);for(let i=0;i<7;i++){const s=pop(t,46.95+i*.06,.4)*(.8+.3*Math.sin(t*6+i));if(s>0)spark(160+r()*760,420+r()*760,s*1.3,[P.n,P.m,P.mint,P.white][i%4],t+i);}}
+  // chips above
+  const nc=pop(t,33.95,.4);
+  if(nc>0)withT(800,395,{s:nc,r:.04},()=>chip('نویز '+fa(Math.round(n*100))+'٪',0,0,40,{fill:n>.5?P.m:n>0?P.n:P.mint,color:n>.5?P.white:P.ink}));
+  const sc=pop(t,40.0,.4);
+  if(sc>0)withT(290,395,{s:sc,r:-.04},()=>chip('مرحله '+fa(t<40.3?0:step)+' از '+fa(50),0,0,40,{fill:P.white}));
+  const rnd=pop(t,36.6,.4)*(1-pr(t,39.6,39.9));
+  if(rnd>0)withT(540,800,{s:rnd},()=>chip('کاملاً تصادفی',0,0,52,{fill:P.ink,color:P.n,sh:0}));
+  // emerging tags
+  const tags=[['شکل‌ها',43.32],['اجزا',44.3],['نور',44.96],['رنگ',45.4],['جزئیات',45.86]];
+  let x=540+ (tags.reduce((a,[w])=>a+tw(w,38)+60,0)+12*4)/2;
+  tags.forEach(([w,tt])=>{
+    const ww=tw(w,38)+60;const cx=x-ww/2;x-=ww+12;
+    const p=pop(t,tt,.35);if(p>0)withT(cx,1225,{s:p},()=>chip(w,0,0,38,{fill:P.n}));
+  });
+  X.restore();
+}
+
+/* ---------- 6: not copied from the internet ---------- */
+function sNotCopy(t){
+  const al=vis(t,47.6,58.2,.3,.3);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  const dim=1-.6*pr(t,51.0,51.4);
+  withT(540,420,{s:pop(t,47.7,.45),a:dim},()=>{
+    card(-390,-150,780,300,{fill:P.white,r:30,sh:12,lw:6});
+    X.fillStyle=P.a;rr(-387,-147,774,58,27);X.fill();X.fillRect(-387,-110,774,21);
+    [P.m,P.n,P.mint].forEach((c,i)=>{X.fillStyle=c;X.beginPath();X.arc(-350+i*32,-118,10,0,7);X.fill();});
+    txt('اینترنت',355,-120,32,P.paper,'right','rtl');
+    card(-340,-62,680,64,{fill:P.paper,r:32,sh:0,lw:4});
+    txt('عکس غروب',300,-32,32,P.ink,'right','rtl');
+    for(let k=0;k<4;k++){const p=1+.08*Math.sin(Math.PI*pr(t,49.3+k*.08,49.7+k*.08));
+      withT(-255+k*170,72,{s:p*.62},()=>{card(-110,-60,220,120,{fill:P.white,r:14,sh:0,lw:5});X.save();rr(-104,-54,208,108,10);X.clip();X.drawImage(k%2?IMG.night:IMG.day,-104,-104,208,208);X.restore();});}
+  });
+  const cx=pop(t,51.0,.4);if(cx>0)crossMark(540,420,80,cx);
+  const mp=pop(t,51.9,.45);
+  if(mp>0){
+    modelBox(540,760,mp*.9,0);
+    const pats=[[mountainIcon,'#E7DBFF'],[sunIcon,'#FFE3C7'],[waveIcon,'#DDE6FF'],[null,'#FFE3C7']];
+    pats.forEach(([ic,bg],k)=>{
+      const p=pop(t,53.4+k*.12,.4);if(p<=0)return;
+      const ang=t*1.1+k*Math.PI/2,R=270;
+      const fly=eio(pr(t,56.0+k*.06,56.5+k*.06));
+      const x=lerp(540+Math.cos(ang)*R,540,fly),y=lerp(760+Math.sin(ang)*R*.45,1120,fly);
+      withT(x,y,{s:p*lerp(.62,.3,fly),a:1-pr(fly,.8,1)},()=>{card(-70,-70,140,140,{fill:bg,r:30,sh:8});if(ic)ic(0,0,.85,t);else catFace(0,14,.42);});
+    });
+    const lp=pop(t,53.5,.35)*(1-pr(t,55.9,56.2));
+    if(lp>0)withT(540,560,{s:lp},()=>chip('الگوهای یادگرفته',0,0,40,{fill:P.n}));
+  }
+  const np=pop(t,56.3,.5);
+  if(np>0){
+    noiseImg(540,1120,300,1-eio(pr(t,56.3,56.9)),Math.floor(t*14),IMG.night,{s:np});
+    withT(700,980,{s:pop(t,56.7,.35),r:.1},()=>chip('جدید',0,0,40,{fill:P.mint}));
+  }
+  X.restore();
+}
+
+/* ---------- 7: patterns, not seeing ---------- */
+function sStats(t){
+  const al=vis(t,57.95,END+1,.3,.3);if(al<=0)return;
+  X.save();X.globalAlpha=al;
+  // eye + imagination
+  const o1=1-pr(t,63.3,63.65);
+  if(o1>0){
+    X.save();X.globalAlpha*=o1;
+    const ep=pop(t,59.6,.45);
+    if(ep>0)withT(780,720,{s:ep},()=>{
+      card(-150,-150,300,300,{fill:P.white,r:40,sh:14});
+      X.lineWidth=8;X.strokeStyle=P.ink;X.fillStyle=P.white;X.beginPath();X.moveTo(-100,0);X.quadraticCurveTo(0,-90,100,0);X.quadraticCurveTo(0,90,-100,0);X.closePath();X.fill();X.stroke();
+      X.fillStyle=P.a;X.beginPath();X.arc(0,0,36,0,7);X.fill();X.stroke();X.fillStyle=P.ink;X.beginPath();X.arc(0,0,15,0,7);X.fill();X.fillStyle=P.white;X.beginPath();X.arc(10,-12,7,0,7);X.fill();
+      chip('دیدن',0,190,40,{fill:P.white});
+    });
+    const bp=pop(t,60.0,.45);
+    if(bp>0)withT(300,720,{s:bp},()=>{
+      card(-150,-150,300,300,{fill:P.white,r:40,sh:14});
+      X.lineWidth=7;X.strokeStyle=P.ink;X.fillStyle='#E7DBFF';
+      X.beginPath();[[-50,-20,48],[10,-45,55],[60,-10,45],[10,25,50],[-45,25,40]].forEach(([x,y,r])=>{X.moveTo(x+r,y);X.arc(x,y,r,0,7);});X.fill();
+      X.beginPath();X.arc(-80,80,14,0,7);X.fill();X.stroke();X.beginPath();X.arc(-105,110,9,0,7);X.fill();X.stroke();
+      spark(0,-10,1.1,P.n,t);
+      chip('تصور',0,190,40,{fill:P.white});
+    });
+    const hp=pop(t,60.8,.4);if(hp>0)withT(540,460,{s:hp},()=>chip('مثل انسان؟',0,0,46,{fill:P.n}));
+    const c1=pop(t,61.6,.4);if(c1>0)crossMark(880,600,46,c1);
+    const c2=pop(t,62.8,.4);if(c2>0)crossMark(400,600,46,c2);
+    X.restore();
+  }
+  // statistics bars
+  const o2=1-pr(t,68.6,69.0);
+  if(o2>0&&t>63.5){
+    X.save();X.globalAlpha*=o2;
+    const sp=pop(t,63.9,.45);
+    if(sp>0)withT(540,480,{s:sp},()=>{
+      card(-400,-170,800,340,{fill:P.white,r:36,sh:14});
+      chip('«غروب» ← رنگ آسمان؟',0,-170,38,{fill:P.n});
+      [['نارنجی',.78,P.m],['بنفش',.15,'#A06BE0'],['سبز',.07,P.mint]].forEach(([l,v,c],i)=>{
+        const y=-60+i*85,g=eo(pr(t,64.3+i*.15,65.0+i*.15));
+        txt(l,360,y,38,P.ink,'right','rtl');
+        X.fillStyle='rgba(30,27,46,.08)';rr(-330,y-24,520,48,24);X.fill();
+        X.fillStyle=c;rr(190-520*v*g,y-24,Math.max(48,520*v*g),48,24);X.fill();X.lineWidth=4;X.strokeStyle=P.ink;X.stroke();
+        txt(fa(Math.round(v*100*g))+'٪',-360,y,34,P.ink,'center','rtl');
+      });
+    });
+    // word <-> image links
+    const words=[['کوه',820],['دریاچه',960],['غروب',1100]];
+    const icons=[mountainIcon,waveIcon,sunIcon],bgs=['#E7DBFF','#DDE6FF','#FFE3C7'];
+    const lp=eio(pr(t,66.15,67.5));
+    if(lp>0)for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+      const strong=i===j;X.save();X.globalAlpha*=strong?1:.25;X.lineWidth=strong?12:5;X.strokeStyle=strong?P.ink:P.mute;X.lineCap='round';
+      const a=[700,words[i][1]],b=[380,words[j][1]];X.beginPath();X.moveTo(a[0],a[1]);X.lineTo(lerp(a[0],b[0],lp),lerp(a[1],b[1],lp));X.stroke();X.restore();
+    }
+    words.forEach(([w,y],i)=>{
+      const p=pop(t,65.5+i*.1,.4);if(p>0)withT(790,y,{s:p},()=>chip(w,0,0,44,{fill:P.n}));
+      const q=pop(t,67.2+i*.1,.4);if(q>0)withT(300,y,{s:q*.7},()=>{card(-80,-80,160,160,{fill:bgs[i],r:34,sh:10});icons[i](0,0,1,t);});
+    });
+    X.restore();
+  }
+  // final image
+  const fp=pop(t,69.8,.55);
+  if(fp>0){
+    const k=eio(pr(t,69.8,70.9));
+    noiseImg(540,790,700,1-k,Math.floor(t*14),IMG.day,{s:fp,r:-.02});
+    if(k>=1){const r=rng(12);for(let i=0;i<7;i++){const s=pop(t,70.9+i*.07,.4)*(.8+.3*Math.sin(t*6+i));if(s>0)spark(140+r()*800,380+r()*820,s*1.3,[P.n,P.m,P.mint,P.white][i%4],t+i);}}
+    const cp=pop(t,71.2,.45);
+    if(cp>0)withT(540,1230,{s:cp},()=>chip('کلمه ← الگو ← تصویر',0,0,44,{fill:P.ink,color:P.n,sh:0}));
+  }
+  X.restore();
+}
+
+function renderScenes(t){T=t;sIntro(t);sTrain(t);sFeatures(t);sPrompt(t);sDiffuse(t);sNotCopy(t);sStats(t);}
