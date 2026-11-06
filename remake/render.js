@@ -5,7 +5,7 @@ const FPS=30;
 (async()=>{
   const [mode,out,...rest]=process.argv.slice(2);
   const font=fs.readFileSync(path.join(__dirname,'ECPeyda-Medium.ttf')).toString('base64');
-  const html=fs.readFileSync(path.join(__dirname,'reel.html'),'utf8').replace('FONT_URL','data:font/ttf;base64,'+font);
+  const html=fs.readFileSync(path.join(__dirname,process.env.REEL||'reel.html'),'utf8').replace('FONT_URL','data:font/ttf;base64,'+font);
   const b=await chromium.launch();const p=await b.newPage({viewport:{width:540,height:960}});
   p.on('pageerror',e=>{console.error('PAGEERR',e.message);process.exit(1);});
   await p.setContent(html);await p.evaluate(()=>init());
