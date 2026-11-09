@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Paper Growth Reel</title>
+<style>
+@font-face { font-family: Peyda; src: url(../assets/fonts/ECPeyda-SemiBold.ttf); }
+:root {
+  --ink: #2a2420;
+  --red: #d9472f;
+  --paper: #fffaf0;
+}
+html, body { margin: 0; padding: 0; background: #111; }
+#stage {
+  position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: #efe6d3; font-family: Peyda, sans-serif; color: var(--ink);
+}
+.abs { position: absolute; left: 0; top: 0; }
+.sheet { position: absolute; left: 0; top: -40px; width: 1080px; height: 2260px; transform-origin: 50% 0; }
+.sheet .layer { position: absolute; inset: 0; }
+.sheet .shadow { background: rgba(50, 30, 10, .28); filter: blur(10px); }
+.content { position: absolute; left: 0; top: 40px; width: 1080px; height: 1920px; }
+.txt { white-space: nowrap; line-height: 1.3; text-align: center; }
+.card { background: #fff; padding: 14px; box-shadow: 0 22px 34px rgba(60, 40, 20, .28), 0 2px 4px rgba(0, 0, 0, .18); }
+.card img { display: block; }
+.tape {
+  position: absolute; width: 150px; height: 46px; background: rgba(244, 230, 170, .80);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+  clip-path: polygon(0 8%, 4% 0, 8% 10%, 12% 0, 88% 0, 92% 12%, 96% 0, 100% 8%, 100% 92%, 96% 100%, 92% 88%, 88% 100%, 12% 100%, 8% 90%, 4% 100%, 0 92%);
+}
+.label {
+  position: absolute; padding: 4px 28px 10px; font-size: 50px; color: #fff; background: var(--ink);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .25);
+}
+.tag {
+  display: flex; align-items: center; gap: 18px; background: var(--paper);
+  padding: 12px 34px 12px 18px; border-radius: 16px; font-size: 46px;
+  box-shadow: 0 8px 16px rgba(60, 40, 20, .2);
+}
+.tag .ic { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; }
+.tag .ic svg { width: 56px; height: 56px; }
+.strip { background: var(--paper); box-shadow: 0 14px 22px rgba(60, 40, 20, .22); }
+.badge {
+  width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 64px; background: #f2c94c; box-shadow: 0 8px 14px rgba(60, 40, 20, .25);
+}
+.sticker {
+  width: 250px; height: 250px; border-radius: 50%; background: var(--red); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 10px 18px rgba(60, 20, 10, .3); border: 8px dashed rgba(255, 255, 255, .55);
+  box-sizing: border-box;
+}
+.stamp {
+  color: var(--red); border: 9px solid var(--red); border-radius: 18px; padding: 6px 34px 16px;
+  font-size: 74px; outline: 3px solid var(--red); outline-offset: 7px;
+  mix-blend-mode: multiply;
+}
+.stamp::after { content: ''; position: absolute; inset: -16px; background: url(stampspeck.png) 0 0 / 100% 100%; }
+.handle { font-size: 40px; direction: ltr; opacity: .75; letter-spacing: .5px; }
+#grain { position: absolute; inset: 0; background: url(grain.png); mix-blend-mode: multiply; pointer-events: none; }
+svg.draw path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+(() => {
+const W = 1080, H = 1920;
+const INK = '#2a2420', RED = '#d9472f';
+const stage = document.getElementById('stage');
+
+/* ---------- helpers ---------- */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, p) => a + (b - a) * p;
+const eOutCubic = p => 1 - Math.pow(1 - p, 3);
+const eInQuad = p => p * p;
+const eInOut = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const eOutBack = (p, s = 1.7) => 1 + (s + 1) * Math.pow(p - 1, 3) + s * Math.pow(p - 1, 2);
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const FA = '۰۱۲۳۴۵۶۷۸۹';
+const fa = s => String(s).replace(/\d/g, d => FA[d]).replace(/\./g, '٫');
+function fmtCount(v, final) {
+  if (v < 1000) return fa(Math.round(v));
+  const k = v / 1000;
+  let s = final ? (Math.round(k * 10) / 10).toString() : k.toFixed(1);
+  if (k >= 100) s = Math.round(k).toString();
+  return fa(s) + ' هزار';
+}
+function el(tag, cls, parent, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function tornTop(w, h, amp, step, seed, off = 0) {
+  const r = rng(seed), pts = [];
+  for (let x = 0; x <= w + step; x += step) pts.push(`${Math.min(x, w)}px ${off + r() * amp}px`);
+  pts.push(`${w}px ${h}px`, `0px ${h}px`);
+  return `polygon(${pts.join(',')})`;
+}
+function tornStrip(w, h, amp, seed) {
+  const r = rng(seed), pts = [], st = 14;
+  for (let x = 0; x <= w; x += 40) pts.push(`${x}px ${r() * 6}px`);
+  for (let y = 0; y <= h; y += st) pts.push(`${w - r() * amp}px ${y}px`);
+  for (let x = w; x >= 0; x -= 40) pts.push(`${x}px ${h - r() * 6}px`);
+  for (let y = h; y >= 0; y -= st) pts.push(`${r() * amp}px ${y}px`);
+  return `polygon(${pts.join(',')})`;
+}
+
+/* ---------- icons (hand-drawn style line art) ---------- */
+const ICONS = {
+  camera: '<rect x="14" y="34" width="72" height="46" rx="9"/><circle cx="50" cy="57" r="14"/><path d="M34 34 L41 22 L59 22 L66 34"/><circle cx="75" cy="44" r="2.5"/>',
+  bike: '<circle cx="25" cy="64" r="16"/><circle cx="75" cy="64" r="16"/><path d="M25 64 L41 38 L63 38 L75 64 M41 38 L52 64 L63 38 M52 64 L25 64 M35 30 L47 30 M63 38 L60 27 L70 27"/>',
+  baklava: '<path d="M50 16 L84 50 L50 84 L16 50 Z M33 33 L67 67 M67 33 L33 67"/><circle cx="50" cy="30" r="3"/><circle cx="50" cy="70" r="3"/><circle cx="30" cy="50" r="3"/><circle cx="70" cy="50" r="3"/>',
+  phone: '<rect x="30" y="12" width="40" height="76" rx="9"/><path d="M44 78 L56 78 M44 20 L56 20"/>',
+  ring: '<circle cx="50" cy="62" r="24"/><path d="M38 34 L44 22 L56 22 L62 34 L50 44 Z"/>',
+  scissors: '<circle cx="33" cy="72" r="11"/><circle cx="67" cy="72" r="11"/><path d="M40 63 L66 16 M60 63 L34 16"/>',
+};
+const icon = (n, c = INK) => `<svg viewBox="0 0 100 100" class="draw"><g fill="none" stroke="${c}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</g></svg>`;
+
+/* ---------- animation registry ---------- */
+const items = [];      // positioned, animated elements
+const updaters = [];   // per-frame custom callbacks
+let uid = 1;
+function add(scene, e, o) {
+  e.classList.add('abs');
+  const it = Object.assign({ e, scene, x: 540, y: 960, rot: 0, s: 1, t0: 0, dur: .6, type: 'up', boil: 0, id: uid++ }, o);
+  items.push(it);
+  return it;
+}
+function animState(it, t) {
+  const p = (t - it.t0) / it.dur;
+  if (p <= 0) return null;
+  const q = Math.min(p, 1), c = 1 - eOutCubic(q);
+  let dx = 0, dy = 0, dr = 0, s = 1, o = 1;
+  switch (it.type) {
+    case 'drop': s = lerp(1.6, 1, eOutBack(q, 1.3)); o = clamp(q * 4); dr = c * 10; dy = c * -50; break;
+    case 'pop': s = Math.max(0, eOutBack(q, 2.6)); o = clamp(q * 5); dr = c * -30; break;
+    case 'slideR': dx = c * 1300; dr = c * 14; break;
+    case 'slideL': dx = c * -1300; dr = c * -14; break;
+    case 'up': dy = c * 100; o = clamp(q * 2.5); break;
+    case 'fall': dy = c * -1400; dr = c * (it.id % 2 ? 25 : -25); break;
+    case 'slap': dy = c * -360; s = lerp(1.3, 1, eOutBack(q, 1.1)); dr = c * -16; o = clamp(q * 5); break;
+    case 'stamp': {
+      const a = clamp(p / .55);
+      s = lerp(2.8, 1, eInQuad(a)); o = clamp(a * 3);
+      const b = (p - .55) / .5;
+      if (b > 0 && b < 1) { dx = Math.sin(b * 42) * 8 * (1 - b); dy = Math.cos(b * 37) * 8 * (1 - b); }
+      break;
+    }
+    case 'none': break;
+  }
+  if (it.boil && p >= 1) {
+    const st = Math.floor(t * 8);
+    dr += (hash(it.id * 13.7 + st) - .5) * it.boil;
+    dy += (hash(it.id * 7.3 + st + 99) - .5) * it.boil * 1.5;
+  }
+  return { dx, dy, dr, s, o };
+}
+function drawPath(path, t0, dur) {
+  const L = path.getTotalLength();
+  path.style.strokeDasharray = L + ' ' + (L + 10);
+  updaters.push(t => { path.style.strokeDashoffset = L * (1 - eInOut(clamp((t - t0) / dur))); });
+}
+
+/* ---------- scenes ---------- */
+const scenes = [];
+function makeScene(start, color, seed) {
+  const sh = el('div', 'sheet', stage);
+  const shadow = el('div', 'layer shadow', sh);
+  const rim = el('div', 'layer', sh);
+  const fill = el('div', 'layer', sh);
+  shadow.style.clipPath = tornTop(W, 2260, 26, 22, seed, -6);
+  rim.style.clipPath = tornTop(W, 2260, 28, 18, seed + 1);
+  rim.style.background = '#fbf7ee';
+  fill.style.clipPath = tornTop(W, 2260, 22, 26, seed + 2, 12);
+  fill.style.background = color;
+  const content = el('div', 'content', sh);
+  const sc = { start, sh, shadow, content, idx: scenes.length };
+  scenes.push(sc);
+  return sc;
+}
+
+function confetti(sc, n, seed, t0, region) {
+  const r = rng(seed), cols = ['#f2c94c', '#d9472f', '#7fb3d5', '#8fbf7a', '#e9a3b9', '#2a2420'];
+  for (let i = 0; i < n; i++) {
+    const d = el('div', null, sc.content);
+    const sz = 26 + r() * 46, kind = Math.floor(r() * 3);
+    d.style.width = sz + 'px'; d.style.height = (kind === 0 ? sz * .45 : sz) + 'px';
+    d.style.background = cols[Math.floor(r() * cols.length)];
+    if (kind === 1) d.style.borderRadius = '50%';
+    if (kind === 2) d.style.clipPath = 'polygon(50% 0, 100% 100%, 0 100%)';
+    d.style.boxShadow = '0 4px 6px rgba(0,0,0,.15)';
+    let x, y;
+    do { x = 40 + r() * (W - 80); y = 80 + r() * (H - 160); } while (region(x, y));
+    add(sc, d, { x, y, rot: r() * 360, t0: t0 + i * .06, type: 'pop', dur: .5, boil: 10 });
+  }
+}
+
+/* ---------- Scene 0 : intro ---------- */
+{
+  const sc = makeScene(-5, '#f4ecdc', 11);
+  confetti(sc, 18, 5, .1, (x, y) => (y > 280 && y < 1600 && x > 100 && x < 980));
+  add(sc, el('div', 'txt', sc.content, 'بیا ببینیم'), { y: 400, t0: .02, type: 'drop', boil: 1.2 }).e.style.fontSize = '100px';
+  add(sc, el('div', 'txt', sc.content, 'چند تا از پیج‌هایی که دستمونه'), { y: 545, t0: .74, type: 'up', boil: 1 }).e.style.fontSize = '66px';
+
+  const s1 = el('div', 'strip txt', sc.content, 'از کجا');
+  Object.assign(s1.style, { fontSize: '170px', padding: '10px 90px 40px', clipPath: tornStrip(640, 270, 24, 3), width: '640px', height: '270px', boxSizing: 'border-box' });
+  add(sc, s1, { y: 850, rot: -4, t0: 2.56, type: 'slideR', dur: .55, boil: .8 });
+
+  const ar = el('div', null, sc.content, '<svg class="draw" width="170" height="190" viewBox="0 0 170 190"><path d="M80 10 C 30 50, 140 90, 86 168" stroke="#2a2420" stroke-width="10"/><path d="M52 138 L86 170 L118 140" stroke="#2a2420" stroke-width="10"/></svg>');
+  add(sc, ar, { y: 1060, x: 520, t0: 2.95, type: 'none', dur: .01 });
+  const ps = ar.querySelectorAll('path'); drawPath(ps[0], 2.95, .3); drawPath(ps[1], 3.2, .15);
+
+  const s2 = el('div', 'strip txt', sc.content, 'به کجا');
+  Object.assign(s2.style, { fontSize: '170px', color: '#fff', background: RED, padding: '10px 90px 40px', clipPath: tornStrip(660, 270, 24, 9), width: '660px', height: '270px', boxSizing: 'border-box' });
+  add(sc, s2, { y: 1275, rot: 3, t0: 3.24, type: 'slideL', dur: .5, boil: .8 });
+  add(sc, el('div', 'txt', sc.content, 'رسیدن؟'), { y: 1505, t0: 3.64, type: 'pop', boil: 1.5 }).e.style.fontSize = '120px';
+}
+
+/* ---------- Scene 1 : categories ---------- */
+{
+  const sc = makeScene(4.35, '#dcc9a6', 21);
+  const t = add(sc, el('div', 'txt', sc.content, 'از حوزه‌های مختلف'), { y: 250, t0: 4.6, type: 'drop', boil: 1 });
+  t.e.style.fontSize = '84px';
+  const cats = [
+    ['اکسسوری و جواهرات', 'ring', '#c9d3df', 4.66],
+    ['فروشگاه دوچرخه', 'bike', '#bcd5ea', 5.52],
+    ['باقلوا فروشی', 'baklava', '#f3cfa6', 6.88],
+    ['تجهیزات تولید محتوا', 'camera', '#c7dfb9', 8.34],
+    ['موبایل فروشی', 'phone', '#ddd0ee', 10.96],
+  ];
+  cats.forEach(([name, ic, col, t0], i) => {
+    const c = el('div', 'tag', sc.content, `<div class="ic" style="background:${col}">${icon(ic)}</div><div>${name}</div>`);
+    c.style.fontSize = '64px'; c.style.padding = '18px 44px 22px 22px';
+    c.querySelector('.ic').style.cssText += ';width:118px;height:118px';
+    c.querySelector('svg').style.cssText = 'width:84px;height:84px';
+    add(sc, c, { y: 470 + i * 255, x: 540 + (i % 2 ? -50 : 50), rot: i % 2 ? 2.5 : -2.5, t0: t0 - .08, type: i % 2 ? 'slideL' : 'slideR', dur: .5, boil: .8 });
+  });
+  confetti(sc, 8, 77, 4.8, (x, y) => (y > 150 && y < 1650 && x > 80 && x < 1000));
+}
+
+/* ---------- Scenes 2-7 : case studies ---------- */
+const PAGES = [
+  { id: 'dorbin', t: 12.55, color: '#cfe0c3', ic: 'camera', icCol: '#a9cf92', name: 'آقای دوربین', handle: '@mrdorbin_', cat: 'تجهیزات تولید محتوا',
+    b: [1447, 525, .565, .69], a: [1320, 465, .55, .69], from: 14000, to: 82400, tB: 13.92, tA: 15.9, pct: '+۴۸۹٪', pctT: 17.05 },
+  { id: 'zaman', t: 18.45, color: '#c9dbe8', ic: 'bike', icCol: '#9cc3e2', name: 'زمان روچرخ', handle: '@zamanrocharkh.qom', cat: 'فروشگاه دوچرخه',
+    b: [1320, 490, .55, .71], a: [1320, 450, .55, .68], from: 34300, to: 62500, tB: 20.28, tA: 21.88, pct: '+۸۲٪', pctT: 22.95, stamp: 'بدون تبلیغ', stampT: 23.62 },
+  { id: 'lazzat', t: 25.6, color: '#f3d6b8', ic: 'baklava', icCol: '#efb47a', name: 'لذت سنتر', handle: '@lazzatcenterqom', cat: 'باقلوا فروشی',
+    b: [1207, 368, .58, .65], a: [1320, 480, .55, .75], from: 23600, to: 40100, tB: 28.44, tA: 29.62, pct: '+۷۰٪', pctT: 30.75, stamp: 'بدون هیچ تبلیغی', stampT: 31.62 },
+  { id: 'paytakht', t: 33.7, color: '#e2d6ee', ic: 'phone', icCol: '#c3abe0', name: 'موبایل پایتخت', handle: '@alipaytakht', cat: 'موبایل فروشی',
+    b: [1290, 386, .555, .62], a: [1320, 440, .55, .76], from: 6, to: 23000, tB: 35.18, tA: 37.22, pct: '+۲۳<br><span style="font-size:44px">هزار</span>', pctT: 38.45, stamp: 'شروع از صفر', stampT: 35.7, stampOnBefore: true },
+  { id: 'ahura', t: 39.8, color: '#d5dde6', ic: 'ring', icCol: '#aebdd0', name: 'جواهری اهورا', handle: '@ahurajewellerry', cat: 'نقره و اکسسوری',
+    b: [1290, 450, .56, .70], a: [1320, 460, .55, .72], from: 66000, to: 89100, tB: 41.7, tA: 43.36, pct: '+۳۵٪', pctT: 44.55 },
+  { id: 'matin', t: 46.0, color: '#ead0c8', ic: 'scissors', icCol: '#dfa595', name: 'متین عباس‌زاده', handle: '@matin_abbaszade', cat: 'سالن زیبایی مردانه', kicker: 'و در آخر…', nameT: 46.98,
+    b: [1290, 495, .555, .72], a: [1320, 455, .55, .69], from: 18600, to: 73000, tB: 49.34, tA: 51.04, pct: '+۲۹۲٪', pctT: 52.3, stamp: 'بدون حتی یک تبلیغ', stampT: 53.3 },
+];
+
+function shotCard(sc, src, dims, cw, label, labelBg, cx, cy, rot, t0, circle) {
+  const [iw, ih, fx, fy] = dims, h = Math.round(cw * ih / iw);
+  const card = el('div', 'card', sc.content);
+  card.style.width = cw + 'px';
+  const wrap = el('div', null, card); wrap.style.position = 'relative';
+  const img = el('img', null, wrap); img.src = `../assets/shots/${src}.jpg`; img.style.width = cw + 'px'; img.style.height = h + 'px';
+  for (const [l, r] of [[-40, -12], [cw - 82, 10]]) {
+    const tp = el('div', 'tape', card); tp.style.left = l + 'px'; tp.style.top = '-24px'; tp.style.transform = `rotate(${r - 20 * Math.sign(r)}deg)`;
+  }
+  const lb = el('div', 'label', card, label);
+  lb.style.background = labelBg; lb.style.right = '-26px'; lb.style.top = '-34px'; lb.style.transform = 'rotate(6deg)';
+  if (circle) {
+    const ew = cw * .25, eh = h * .42, pad = 26;
+    const pts = [], seed = hash(cx + cy) * 6;
+    for (let a = -.5; a <= Math.PI * 2 + .35; a += .06) {
+      const k = 1 + .07 * Math.sin(3 * a + seed) + .06 * (a / (Math.PI * 2));
+      pts.push(`${(ew / 2 + pad + Math.cos(a) * ew / 2 * k).toFixed(1)} ${(eh / 2 + pad + Math.sin(a) * eh / 2 * k).toFixed(1)}`);
+    }
+    const sv = el('div', null, wrap, `<svg class="draw" width="${ew + pad * 2}" height="${eh + pad * 2}"><path d="M${pts.join(' L')}" stroke="${RED}" stroke-width="9" opacity=".9"/></svg>`);
+    Object.assign(sv.style, { position: 'absolute', left: (fx * cw - ew / 2 - pad) + 'px', top: (fy * h - eh / 2 - pad) + 'px' });
+    drawPath(sv.querySelector('path'), circle, .6);
+  }
+  return add(sc, card, { x: cx, y: cy, rot, t0, type: 'slap', dur: .5, boil: .5 });
+}
+
+PAGES.forEach((P, i) => {
+  const sc = makeScene(P.t, P.color, 100 + i * 7);
+  const T0 = P.t;
+  // number badge
+  const bd = el('div', 'badge txt', sc.content, fa('0' + (i + 1)));
+  add(sc, bd, { x: 120, y: 150, rot: -8, t0: T0 + .45, type: 'pop', boil: 2 });
+  if (P.kicker) {
+    const k = add(sc, el('div', 'txt', sc.content, P.kicker), { y: 118, x: 600, t0: 46.26, type: 'up', boil: 1 });
+    k.e.style.fontSize = '50px';
+  }
+  // category tag
+  const tg = el('div', 'tag', sc.content, `<div class="ic" style="background:${P.icCol}">${icon(P.ic)}</div><div>${P.cat}</div>`);
+  add(sc, tg, { y: 200, x: 580, rot: -2, t0: T0 + .4, type: 'slideR', dur: .5, boil: .8 });
+  const nameT = P.nameT || T0 + .55;
+  const nm = add(sc, el('div', 'txt', sc.content, P.name), { y: 330, t0: nameT, type: 'drop', boil: 1 });
+  nm.e.style.fontSize = '112px';
+  add(sc, el('div', 'txt handle', sc.content, P.handle), { y: 430, t0: nameT + .3, type: 'up', boil: .6 });
+
+  // cards
+  const CW = 830;
+  shotCard(sc, P.id + '_before', P.b, CW, 'قبل', INK, 540, 690, -2.5, P.tB - .12, null);
+  shotCard(sc, P.id + '_after', P.a, CW, 'بعد', RED, 540, 1185, 2, P.tA - .1, P.tA + .45);
+
+  // arrow between cards
+  const ar = el('div', null, sc.content, '<svg class="draw" width="150" height="150" viewBox="0 0 150 150"><path d="M60 8 C 20 50, 120 70, 74 132" stroke="#2a2420" stroke-width="9"/><path d="M46 106 L74 134 L102 110" stroke="#2a2420" stroke-width="9"/></svg>');
+  add(sc, ar, { x: 220, y: 940, t0: P.tA - .45, type: 'none', dur: .01 });
+  const ps = ar.querySelectorAll('path'); drawPath(ps[0], P.tA - .45, .3); drawPath(ps[1], P.tA - .18, .12);
+
+  // counter strip
+  const st = el('div', 'strip', sc.content);
+  Object.assign(st.style, { width: '820px', height: '230px', clipPath: tornStrip(820, 230, 20, 40 + i), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '26px' });
+  const num = el('div', 'txt', st); num.style.fontSize = '128px'; num.style.paddingBottom = '18px';
+  const lab = el('div', 'txt', st, 'فالوور'); lab.style.fontSize = '54px'; lab.style.opacity = '.7'; lab.style.paddingTop = '20px';
+  add(sc, st, { x: 540, y: 1525, rot: -1.5, t0: P.tB + .05, type: 'up', dur: .45, boil: .5 });
+  updaters.push(t => {
+    if (t < P.tB) return;
+    const p = clamp((t - P.tA) / 1.15);
+    const v = P.from * Math.pow(P.to / P.from, eOutCubic(p));
+    num.textContent = fmtCount(v, p >= 1 || p <= 0);
+    num.style.color = p > 0 ? RED : INK;
+  });
+
+  // growth sticker
+  const sk = el('div', 'sticker txt', sc.content, `<div style="font-size:70px;line-height:1.1;direction:ltr">${P.pct}</div><div style="font-size:38px">رشد</div>`);
+  add(sc, sk, { x: 190, y: 1735, rot: -10, t0: P.pctT, type: 'pop', dur: .5, boil: 2 });
+
+  if (P.stamp) {
+    const s = el('div', 'stamp txt', sc.content, P.stamp);
+    if (P.stampOnBefore) add(sc, s, { x: 790, y: 830, rot: -9, t0: P.stampT, type: 'stamp', dur: .7 });
+    else add(sc, s, { x: 690, y: 1745, rot: -7, t0: P.stampT, type: 'stamp', dur: .7 });
+  }
+});
+
+/* ---------- Scene 8 : outro ---------- */
+{
+  const sc = makeScene(55.35, '#f2dfa0', 301);
+  const ids = ['dorbin', 'zaman', 'lazzat', 'paytakht', 'ahura', 'matin'];
+  const pos = [[250, 250, -7], [800, 330, 6], [300, 520, 4], [790, 1490, -5], [270, 1640, 7], [770, 1760, -3]];
+  ids.forEach((id, i) => {
+    const c = el('div', 'card', sc.content); c.style.padding = '10px 10px 34px';
+    const im = el('img', null, c); im.src = `../assets/shots/${id}_after.jpg`; im.style.width = '430px';
+    const tp = el('div', 'tape', c); tp.style.left = '140px'; tp.style.top = '-22px'; tp.style.transform = 'rotate(-4deg)';
+    const [x, y, r] = pos[i];
+    add(sc, c, { x, y, rot: r, t0: 55.55 + i * .22, type: 'fall', dur: .55, boil: .6 });
+  });
+  const box = el('div', 'strip', sc.content);
+  Object.assign(box.style, { width: '940px', height: '640px', clipPath: tornStrip(940, 640, 22, 88) });
+  add(sc, box, { x: 540, y: 1000, rot: -1, t0: 55.5, type: 'up', dur: .5 });
+  const l1 = add(sc, el('div', 'txt', sc.content, 'اینها فقط بخشی از'), { y: 790, t0: 55.7, type: 'up', boil: .8 }); l1.e.style.fontSize = '70px';
+  const l2 = add(sc, el('div', 'txt', sc.content, 'نتایج هدفمند ماست'), { y: 905, t0: 57.25, type: 'drop', boil: .8 }); l2.e.style.fontSize = '96px';
+  const l3 = add(sc, el('div', 'txt', sc.content, 'که برای پیج کسب‌وکار شما'), { y: 1030, t0: 59.18, type: 'up', boil: .8 }); l3.e.style.fontSize = '66px';
+  const hiWrap = el('div', null, sc.content);
+  hiWrap.style.cssText = 'position:absolute;width:640px;height:190px';
+  const hi = el('div', null, hiWrap); hi.style.cssText = `position:absolute;right:0;top:60px;height:110px;background:rgba(255,205,40,.85);border-radius:30px 12px 34px 10px;transform:skew(-6deg)`;
+  const l4 = el('div', 'txt', hiWrap, 'رقم می‌زنیم!'); l4.style.cssText += ';position:absolute;inset:0;font-size:136px;color:' + RED;
+  add(sc, hiWrap, { y: 1170, rot: -2, t0: 60.85, type: 'pop', dur: .45, boil: 1 });
+  updaters.push(t => { hi.style.width = (640 * eOutCubic(clamp((t - 61.15) / .4))) + 'px'; });
+}
+
+/* ---------- grain overlay ---------- */
+el('div', null, stage).id = 'grain';
+
+/* ---------- frame renderer ---------- */
+window.renderFrame = function (t) {
+  scenes.forEach((sc, i) => {
+    const next = scenes[i + 1];
+    const visible = t >= sc.start && !(next && t > next.start + 1.0);
+    sc.sh.style.display = visible ? 'block' : 'none';
+    sc.visible = visible;
+    if (!visible) return;
+    const p = clamp((t - sc.start) / .75), e = eOutCubic(p);
+    let y = (1 - e) * 2080, rot = (1 - e) * -5;
+    if (next && t > next.start) { const pn = eOutCubic(clamp((t - next.start) / .75)); y -= pn * 160; }
+    sc.sh.style.transform = `translateY(${y}px) rotate(${rot}deg)`;
+    sc.shadow.style.display = p < 1 ? 'block' : 'none';
+  });
+  for (const it of items) {
+    if (!it.scene.visible) continue;
+    const st = animState(it, t);
+    if (!st) { it.e.style.visibility = 'hidden'; continue; }
+    it.e.style.visibility = 'visible';
+    it.e.style.opacity = st.o;
+    it.e.style.transform = `translate(${it.x + st.dx}px,${it.y + st.dy}px) translate(-50%,-50%) rotate(${it.rot + st.dr}deg) scale(${it.s * st.s})`;
+  }
+  for (const u of updaters) u(t);
+};
+window.DURATION = 62.0;
+const pre = new Image(); pre.src = 'stampspeck.png';
+window.ready = Promise.all([pre.decode().catch(() => {}), document.fonts.load('80px Peyda'), ...[...document.images].map(i => i.decode().catch(() => {}))]).then(() => document.fonts.ready);
+window.renderFrame(0);
+})();
+</script>
+</body>
+</html>
